@@ -188,12 +188,12 @@ class Heuristics():
 
     def _is_question(self, text, parse=False):
         """Use CFG parsing or RegEx to determine if a sentence is a question"""
+        question_sents_idxs = []
         if parse:
             parser = stanford.StanfordParser(
                 model_path="/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars/englishPCFG.ser.gz")
             sentences = parser.raw_parse_sents(text)
             cfg_tree_list = [list(dep_graphs) for dep_graphs in sentences]
-            question_sents_idxs = []
             for i in range(len(text)):
                 finish = False
                 node_list = cfg_tree_list[i][0].productions()
@@ -213,13 +213,21 @@ class Heuristics():
                             continue
             return question_sents_idxs
         else:
-            for sent in text:
-                question_what = re.search(r"^[Ww]hat.*?$", text)
-                question_where = re.search(r"^[Ww]here.*?$", text)
-                question_why = re.search(r"^[Ww]hy.*?$", text)
-                question_who = re.search(r"^[Ww]ho.*?$", text)
-                question_when = re.search(r"^[Ww]hen.*?$", text)
-                question_how = re.search(r"^[Hh]ow.*?$", text)
+            for i in range(len(text)):
+                sent = text[i]
+                question_what = re.search(r"^[Ww]hat.*?$", sent)
+                question_where = re.search(r"^[Ww]here.*?$", sent)
+                question_why = re.search(r"^[Ww]hy.*?$", sent)
+                question_who = re.search(r"^[Ww]ho.*?$", sent)
+                question_when = re.search(r"^[Ww]hen.*?$", sent)
+                question_how = re.search(r"^[Hh]ow.*?$", sent)
+                q_types = [question_how, question_when, question_who, question_why, question_where,
+                           question_what]
+                for q in q_types:
+                    if q is not None:
+                        question_sents_idxs.append(i)
+            return question_sents_idxs
+
 
 
 
