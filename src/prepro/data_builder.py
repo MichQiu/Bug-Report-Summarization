@@ -1,11 +1,9 @@
 import os
 import gc
-import re
 import random
 import xml.etree.ElementTree as ET
 import torch
 from nltk.parse import stanford
-from collections import defaultdict
 from multiprocessing import Pool
 from copy import deepcopy
 from os.path import join as pjoin
@@ -108,154 +106,26 @@ def data_dict_combine(dict1, dict2):
         dict1[i].update(dict2[i])
     return dict1
 
-class Heuristics():
-    def __init__(self, args, data_dict):
-        self.args = args
-        self.data_dict = data_dict
 
-    def evaluate_sent(self, word_file):
-        """Get indices for evaluative and duplicate sentences"""
-        with open(word_file, 'r') as f:
-            for line in f:
-                all_sent_idxs = {}
-                words = line.split()
-                if words[-1] == 'first':
-                    sent_idxs_f = self._get_special_sents(words[0], first=True, last=False)
-                    eval_dup_dict = self._get_eval_dup_dict('first', sent_idxs_f)
-                if words[-1] == 'last':
-                    sent_idxs_l = self._get_special_sents(words[0], first=False, last=True)
-                    eval_dup_dict = self._get_eval_dup_dict('last', sent_idxs_l)
-                all_sent_idxs[words[0]] = eval_dup_dict
-            return all_sent_idxs
-
-    def _get_special_sents(self, word, first=False, last=False):
-        """Get a list of indices of sentences that includes a specific word"""
-        sent_idxs_lst = []
-        for i in range(len(self.data_dict['src_text'])):
-            sent = self.data_dict['src_text'][i].split()
-            if first:
-                if sent[0] == word:
-                    sent_idxs_lst.append(i)
-            elif last:
-                if sent[-1] == word:
-                    sent_idxs_lst.append(i)
-            else:
-                if word in sent:
-                    sent_idxs_lst.append(i)
-        return sent_idxs_lst
-
-    def _get_eval_dup_dict(self, position, sent_idxs):
-        """Get a dict containing the indices of evaluative and duplicate sentences"""
-        eval_dup_dict = {}
-        for idx in sent_idxs:  # index of sentences that contains evaluation of other sentences
-            sent = self.data_dict['src_text'][idx]
-            sent_tokens = sent.split()
-            if position == 'first':
-                sent_tokens.pop(0)
-            elif position == 'last':
-                sent_tokens.pop()
-            eval_idx = []
-            for i in range(len(self.data_dict['src_text'])):  # all other sentences
-                other_tokens = self.data_dict['src_text'][i].split()
-                if len(list(set(sent_tokens) - set(other_tokens))) == 0:
-                    eval_idx.append(i)
-                else:
-                    diff = len(list(set(sent_tokens) - set(other_tokens)))
-                    if len(sent_tokens) > len(other_tokens):
-                        length = len(sent_tokens)
-                    else:
-                        length = len(other_tokens)
-                    matching_rate = 1 - diff / length
-                    if matching_rate > 0.9:
-                        eval_idx.append(i)
-            eval_dup_dict[idx] = eval_idx
-        return eval_dup_dict
-
-    def _get_comment_bounds(self):
-        """Get the sentence index boundaries for each comment"""
-        comment_bounds = []
-        for i in range(1, len(self.data_dict['sent_id'])):
-            id = self.data_dict['sent_id'][i]
-            prev_id = self.data_dict['sent_id'][i - 1]
-            if int(float(id['ID'])) > int(float(prev_id['ID'])):
-                comment_bounds.append(i)
-        return comment_bounds
-
-    def _is_description(self, comment_bounds):
-        """Check if sentences are bug descriptions"""
-        description_sent_idxs = [i for i in range(comment_bounds[0])]
-        return description_sent_idxs
-
-    def _is_question(self, text, parse=False):
-        """Use CFG parsing or RegEx to determine if a sentence is a question"""
-        question_sents_idxs = []
-        if parse:
-            parser = stanford.StanfordParser(
-                model_path="/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars/englishPCFG.ser.gz")
-            sentences = parser.raw_parse_sents(text)
-            cfg_tree_list = [list(dep_graphs) for dep_graphs in sentences]
-            for i in range(len(text)):
-                finish = False
-                node_list = cfg_tree_list[i][0].productions()
-                for j in range(len(node_list)):
-                    if finish:
-                        continue
-                    node_l = node_list[j].lhs().symbol()
-                    if node_l == 'SBARQ' or node_l == 'SQ':
-                        question_sents_idxs.append(i)
-                        continue
-                    node_tup = node_list[j].rhs()
-                    for k in range(len(node_tup)):
-                        node_r = node_tup[k].symbol()
-                        if node_r == 'SBARQ' or node_r == 'SQ':
-                            question_sents_idxs.append(i)
-                            finish = True
-                            continue
-            return question_sents_idxs
-        else:
-            for i in range(len(text)):
-                sent = text[i]
-                question_what = re.search(r"^[Ww]hat.*?$", sent)
-                question_where = re.search(r"^[Ww]here.*?$", sent)
-                question_why = re.search(r"^[Ww]hy.*?$", sent)
-                question_who = re.search(r"^[Ww]ho.*?$", sent)
-                question_when = re.search(r"^[Ww]hen.*?$", sent)
-                question_how = re.search(r"^[Hh]ow.*?$", sent)
-                q_types = [question_how, question_when, question_who, question_why, question_where,
-                           question_what]
-                for q in q_types:
-                    if q is not None:
-                        question_sents_idxs.append(i)
-            return question_sents_idxs
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+'''
+special_wordfile = '/home/mich_qiu/PycharmProjects/MSc_Thesis/PreSumm_Bug/src/prepro/special_words.txt'
 He = Heuristics(0, full_data[0])
+sent_idxs_f = He._get_special_sents('&gt;', first=True, last=False)
+eval_dup_dict = He._get_eval_dup_dict('first', sent_idxs_f)
+eval_sent_dict = He.evaluate_sent(special_wordfile)
 
-all_sent_idxs = He._get_special_sents('&gt;', first=True, last=False)
-
-
+all_eval_dict = {}
+i = 0
+for report in full_data:
+    He = Heuristics(0, report)
+    eval_sent_dict = He.evaluate_sent(special_wordfile)
+    all_eval_dict['Report ID '+str(i)] = eval_sent_dict
+    i += 1
 
 a = deepcopy(full_data[0])
 a['src_text'][1]
 
-'''
+
 bug_data = load_xml_bug(data)
 abs_, ext_ = load_xml_bug(annotated_data, annotated=True)
 sum_data = data_dict_combine(abs_, ext_)
@@ -306,10 +176,10 @@ class BertData():
         src = data_dict['src_text']
         sent_id = data_dict['sent_id']
 
+        src = [src[i].split() for i in range(len(src))]
         idxs = [i for i, s in enumerate(src) if (len(s) > 2)]
         sent_id = [sent_id[i] for i in idxs]
         src = [src[i][:self.args.max_src_ntokens_per_sent] for i in idxs]
-        src = [src[i].split() for i in range(len(src))]
 
         if ((not is_test) and len(src) < self.args.min_src_nsents):
             return None
