@@ -1,10 +1,43 @@
 from __future__ import print_function
 
+import re
 import time
 from multiprocessing import Pool
 from copy import deepcopy
+from html.parser import HTMLParser
+import urllib.request as urllib2
 import pprint
 import bugzilla
+
+class MyHTMLParser(HTMLParser):
+    ls_data = []
+    append_data = False
+
+    def handle_starttag(self, startTag, attrs):
+        if startTag == 'select':
+            for attr in attrs:
+                if attr[-1] == 'product':
+                    self.append_data = True
+                    break
+
+    def handle_endtag(self, endTag):
+        if endTag == 'select' and self.append_data:
+            self.append_data = False
+
+    def handle_data(self, data):
+        if self.append_data:
+            non_space = re.search(r'[\\n]', data)
+            if non_space is None:
+                self.ls_data.append(data)
+
+
+def _get_product_lists(url):
+    parser = MyHTMLParser()
+    parser.ls_data = []
+    html_page = urllib2.urlopen(url)
+    parser.feed(str(html_page.read()))
+    return parser.ls_data
+
 
 class BugSource():
 
