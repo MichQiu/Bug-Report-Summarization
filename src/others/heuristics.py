@@ -86,7 +86,7 @@ class Heuristics():
         return description_sent_idxs
 
     def _is_question(self, text):
-        """Use CFG parsing or RegEx to determine if a sentence is a question"""
+        """Use CFG parsing to determine if a sentence is a question"""
         question_sents_idxs = []
         parser = stanford.StanfordParser(
             model_path=self.args.treebank_file)
