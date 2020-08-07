@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import re
 import time
+from os.path import join as pjoin
 from multiprocessing import Pool
 from copy import deepcopy
 from html.parser import HTMLParser
@@ -50,27 +51,22 @@ class BugSource():
         self.product_list = product_list
         self.bzapi = bugzilla.Bugzilla(self.url)
 
-    def save(self):
-        logger.info('Processing product_dict...')
-        product_dict = self.source()
-        logger.info('Processed product_dict')
-        logger.info('Saving to %s' % self.args.save_file)
-        torch.save(product_dict, self.args.save_file)
-
     def source(self):
         """
         Obtain a dictionary that contains every product in the platform as its keys
         Within each product, there is a dictionary of bug ids and their associated bug comments
         :return {'product_A': {bug_id1:[src_text1], ...}, ...}
         """
-        product_dict = {}
+        logger.info('Processing products...')
         pool = Pool(self.args.n_cpus)
         for d in pool.imap(self._source, self.product_list):
             product, bug_comments = d
-            product_dict[product] = bug_comments
+            save_file = pjoin(self.args.save_path, product+'_bert.pt')
+            logger.info('Saving to %s' % save_file)
+            torch.save(bug_comments, save_file)
         pool.close()
         pool.join()
-        return product_dict
+        logger.info('Processed products')
 
     def _source(self, product):
         """Get the bug ids from the product and extract their comments"""
