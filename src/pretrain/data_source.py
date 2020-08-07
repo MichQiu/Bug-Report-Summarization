@@ -5,9 +5,11 @@ import time
 from multiprocessing import Pool
 from copy import deepcopy
 from html.parser import HTMLParser
+from others.logging import logger
 import urllib.request as urllib2
 import pprint
 import bugzilla
+import torch
 
 class MyHTMLParser(HTMLParser):
     ls_data = []
@@ -30,24 +32,37 @@ class MyHTMLParser(HTMLParser):
             if non_space is None:
                 self.ls_data.append(data)
 
-
-def _get_product_lists(url):
+def get_product_lists(url):
     parser = MyHTMLParser()
     parser.ls_data = []
     html_page = urllib2.urlopen(url)
+    logger.info("Parsing data from %s" % url)
     parser.feed(str(html_page.read()))
+    logger.info("Parsing complete")
     return parser.ls_data
 
 
 class BugSource():
 
-    def __init__(self, args):
+    def __init__(self, args, product_list):
         self.args = args
         self.url = args.url
         self.product_list = args.product_list
         self.bzapi = bugzilla.Bugzilla(self.url)
 
+    def save(self):
+        logger.info('Processing product_dict...')
+        product_dict = self.source()
+        logger.info('Processed product_dict')
+        logger.info('Saving to %s' % self.args.save_file)
+        torch.save(product_dict, self.args.save_file)
+
     def source(self):
+        """
+        Obtain a dictionary that contains every product in the platform as its keys
+        Within each product, there is a dictionary of bug ids and their associated bug comments
+        :return {'product_A': {bug_id1:[src_text1], ...}, ...}
+        """
         product_dict = {}
         pool = Pool(self.args.n_cpus)
         for d in pool.imap(self._source, self.product_list):
@@ -58,11 +73,16 @@ class BugSource():
         return product_dict
 
     def _source(self, product):
+        """Get the bug ids from the product and extract their comments"""
         _, bug_ids = self._get_bug_id(product)
         bug_comments = self._get_text(bug_ids)
         return product, bug_comments
 
     def _get_text(self, bug_ids):
+        """
+        Get the comments of individual bugs by looking up their bug ids
+        :return {bug_id1: [src_text1], bug_id2: [src_text2], ...}
+        """
         bug_comments = {}
         for i in range(len(bug_ids)):
             bug_id = bug_ids[i].id
@@ -74,15 +94,23 @@ class BugSource():
             bug_comments[bug_id] = src_text
         return bug_comments
 
-    def _remove_empty_products(self):
+    def remove_empty_products(self):
+        """Remove all product categories with 0 bug reports"""
+        logger.info("Calculating number of bugs in platform products...")
         full_bugreport_len = self._calculate_bugs_len()
+        logger.info("Calculation complete")
         bugreport_len = deepcopy(full_bugreport_len)
         for product in bugreport_len:
             if bugreport_len[product] == 0:
                 del bugreport_len[product]
+        logger.info("Removed all product categories with 0 bugs")
         return bugreport_len
 
     def _calculate_bugs_len(self):
+        """
+        Calculate the number of bug reports in each product category
+        :return {'product1': bug_length1, ...}
+        """
         bugreport_len = {}
         pool = Pool(self.args.n_cpus)
         for d in pool.imap(self._get_bug_id, self.product_list):
@@ -93,9 +121,28 @@ class BugSource():
         return bugreport_len
 
     def _get_bug_id(self, product):
+        """
+        Conduct query into the bug repository based on the product category and retrieve the bug ids
+        :return [bug_id1, bug_id2, ...]
+        """
         id_query = self.bzapi.build_query(product=product, include_fields=['id'])
         bug_ids = self.bzapi.query(id_query)
         return product, bug_ids
+
+
+def source_data(args, mozilla=False):
+    if mozilla:
+        product_list = []
+        with open(args.mozilla_products, 'r') as f:
+            for line in f:
+                product_list.append(line)
+    else:
+        product_list = get_product_lists(args.url_platform)
+    bug_source = BugSource(args, product_list)
+    bugreport_len = bug_source.remove_empty_products()
+    bug_source.product_list = bugreport_len.keys()
+    bug_source.save()
+
 
 
 URL = 'bugzilla.mozilla.org'
@@ -171,25 +218,4 @@ for i in range(len(comments)):
 
 
 print("\nComments:\n%s" % pprint.pformat(comments[:]))
-
-prods_0 = ['Calendar', 'Cloud Services', 'Data Platform and Tools', 'Emerging Markets', 'Fenix', 'Firefox',
-            'Firefox for Android', 'Firefox for Echo Show', 'Firefox for FireTV', 'Firefox for iOS',
-            'Firefox Private Network', 'Focus', 'Focus-iOS', 'Instantbird', 'Lockwise', 'Mozilla Localizations',
-            'Mozilla VPN', 'Other Applications', 'Pocket', 'SeaMonkey', 'Thunderbird', 'Web Compatibility']
-prods_1 = ['bugzilla.mozilla.org', 'Conduit', 'Developer Infrastructure', 'Firefox Build System', 'Tree Management'];
-prods_2 = ['Chat Core', 'Core', 'DevTools', 'Directory', 'External Software Affecting Firefox', 'GeckoView', 'JSS',
-            'MailNews Core', 'NSPR', 'NSS', 'Remote Protocol', 'Testing', 'Toolkit', 'WebExtensions']
-prods_3 = ['addons.mozilla.org', 'Bugzilla', 'Socorro', 'Tecken', 'Testopia', 'Webtools']
-prods_4 = ['Air Mozilla', 'Community Building', 'Data & BI Services Team', 'Data Compliance', 'Data Science',
-            'Developer Ecosystem', 'Developer Engagement', 'Developer Services', 'developer.mozilla.org',
-            'Enterprise Information Security', 'Firefox Friends', 'Infrastructure & Operations', 'Instantbird Servers',
-            'Internet Public Policy', 'L20n', 'Localization Infrastructure and Tools', 'Location', 'Marketing',
-            'Marketing Graveyard', 'Mozilla China', 'Mozilla Foundation', 'Mozilla Foundation Communications',
-            'Mozilla Grants', 'Mozilla Messaging', 'Mozilla Metrics', 'Mozilla QA', 'Mozilla Reps', 'mozilla.org',
-            'Participation Infrastructure', 'Plugin Check', 'Product Innovation', 'quality.mozilla.org',
-            'Release Engineering', 'Shield', 'Snippets', 'support.mozilla.org', 'support.mozilla.org - Lithium',
-            'Taskcluster', 'Tracking', 'Untriaged Bugs', 'User Experience Design', 'User Research', 'UX Systems',
-            'Web Apps', 'Websites', 'www.mozilla.org']
-
-product_list_mozilla = prods_0 + prods_1 + prods_2 + prods_3 + prods_4
 
