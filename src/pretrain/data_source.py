@@ -47,7 +47,7 @@ class BugSource():
     def __init__(self, args, product_list):
         self.args = args
         self.url = args.url
-        self.product_list = args.product_list
+        self.product_list = product_list
         self.bzapi = bugzilla.Bugzilla(self.url)
 
     def save(self):
@@ -75,24 +75,23 @@ class BugSource():
     def _source(self, product):
         """Get the bug ids from the product and extract their comments"""
         _, bug_ids = self._get_bug_id(product)
-        bug_comments = self._get_text(bug_ids)
+        bug_comments = {}
+        pool = Pool(self.args.n_cpus)
+        for d in pool.imap(self._get_text, bug_ids):
+            bug_id, src_text = d
+            bug_comment[bug_id] = src_text
+        pool.close()
+        pool.join()
         return product, bug_comments
 
-    def _get_text(self, bug_ids):
-        """
-        Get the comments of individual bugs by looking up their bug ids
-        :return {bug_id1: [src_text1], bug_id2: [src_text2], ...}
-        """
-        bug_comments = {}
-        for i in range(len(bug_ids)):
-            bug_id = bug_ids[i].id
-            bug = self.bzapi.getbug(bug_id)
-            comments = bug.getcomments()
-            src_text = []
-            for j in range(len(comments)):
-                src_text.append(comments[j]['raw_text'])
-            bug_comments[bug_id] = src_text
-        return bug_comments
+    def _get_text(self, bug_id):
+        """Get the comments of an individual bug via its bug id"""
+        bug = self.bzapi.getbug(bug_id)
+        comments = bug.getcomments()
+        src_text = []
+        for j in range(len(comments)):
+            src_text.append(comments[j]['raw_text'])
+        return bug_id, src_text
 
     def remove_empty_products(self):
         """Remove all product categories with 0 bug reports"""
@@ -149,7 +148,7 @@ URL = 'bugzilla.mozilla.org'
 bzapi = bugzilla.Bugzilla(URL)
 
 query = bzapi.build_query(
-    product="addons.mozilla.org",
+    product="Firefox",
     include_fields=["id"])
 
 bugreport_len = {}
@@ -190,18 +189,30 @@ bugs = bzapi.query(query)
 t2 = time.time()
 print("Query processing time: %s" % (t2 - t1))
 
-t1 = time.time()
-bug_comment = {}
-for i in range(len(bugs[:5])):
-    bug_id = bugs[i].id
+
+def get_text(idx):
+    bug_id = bugs[idx].id
     bug = bzapi.getbug(bug_id)
     comments = bug.getcomments()
     src_text = []
     for j in range(len(comments)):
         src_text.append(comments[j]['raw_text'])
+    return bug_id, src_text
+
+t1 = time.time()
+bug_comment = {}
+pool = Pool(10)
+for d in pool.imap(get_text, list(range(10))):
+    bug_id, src_text = d
     bug_comment[bug_id] = src_text
+pool.close()
+pool.join()
 t2 = time.time()
 print("Comment fetching processing time: %s" % (t2 - t1))
+
+
+
+
 
 bug = bzapi.getbug(440812)
 print("Fetched bug #%s:" % bug.id)
