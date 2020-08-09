@@ -49,6 +49,7 @@ class BugSource():
         self.args = args
         self.url = args.url
         self.product_list = product_list
+        self.finetune_ids = open(args.finetune_ids, 'r')
         self.bzapi = bugzilla.Bugzilla(self.url)
 
     def source(self):
@@ -122,6 +123,13 @@ class BugSource():
         """
         id_query = self.bzapi.build_query(product=product, include_fields=['id'])
         bug_ids = self.bzapi.query(id_query)
+        _finetune_ids = list(self.finetune_ids.items())
+        ids_notfound = [pair for pair in _finetune_ids if pair[-1] is False]
+        for id_pair in ids_notfound:
+            id = id_pair[0]
+            if id in bug_ids:
+                bug_ids.remove(id)
+                self.finetune_ids[id] = True
         return product, bug_ids
 
 
@@ -135,8 +143,8 @@ def source_data(args, mozilla=False):
         product_list = get_product_lists(args.url_platform)
     bug_source = BugSource(args, product_list)
     bugreport_len = bug_source.remove_empty_products()
-    bug_source.product_list = bugreport_len.keys()
-    bug_source.save()
+    bug_source.product_list = list(bugreport_len.keys())
+    bug_source.source()
 
 
 

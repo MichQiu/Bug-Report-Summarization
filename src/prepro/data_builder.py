@@ -2,6 +2,7 @@ import os
 import gc
 import re
 import random
+import pickle
 import xml.etree.ElementTree as ET
 import torch
 from nltk.parse import stanford
@@ -106,14 +107,16 @@ def data_dict_combine(dict1, dict2):
         dict1[i].update(dict2[i])
     return dict1
 
-def get_bug_ids(datasets):
+def get_bug_ids(datasets, id_save_path):
     bug_id_check = {}
     for data_dict in datasets:
         title = data_dict['title']
         match = re.findall(r"[(][0-9]*[)]" ,title)
         bug_id = int(match[0][1:-1])
         bug_id_check[bug_id] = False
-    return bug_id_check
+    with open(id_save_path, 'w+') as f:
+        pickle.dump(bug_id_check, f)
+    f.close()
 
 '''
 special_wordfile = '/home/mich_qiu/PycharmProjects/MSc_Thesis/PreSumm_Bug/src/prepro/special_words.txt'
@@ -249,6 +252,7 @@ class BertData():
 
 def format_to_bert(args):
     bug_data = load_xml_bug(args.raw_path)
+    get_bug_ids(bug_data, args.id_save_path)
     abs_, ext_ = load_xml_bug(args.raw_path_annotated, annotated=True)
     sum_data = data_dict_combine(abs_, ext_)
     full_data = data_dict_combine(bug_data, sum_data)
