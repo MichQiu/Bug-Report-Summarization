@@ -1,5 +1,6 @@
 import os
 import gc
+import re
 import random
 import xml.etree.ElementTree as ET
 import torch
@@ -86,18 +87,17 @@ def load_xml_bug(data, annotated=False):
 
         for child in root:
 
-            titles = []
             src_text = []
             sent_id = []
 
-            titles.append(child.findtext('Title'))
+            title = child.findtext('Title')
             for sent in child.iter('Sentence'):
                 if len(sent.text.split()) > 0:
                     src_text.append(sent.text.strip())
                     sent_id.append(sent.attrib)
                 else:
                     pass
-            data_dict = {'src_text': src_text, 'sent_id': sent_id, 'titles': titles}
+            data_dict = {'src_text': src_text, 'sent_id': sent_id, 'title': title}
             datasets.append(data_dict)
         return datasets
 
@@ -106,6 +106,14 @@ def data_dict_combine(dict1, dict2):
         dict1[i].update(dict2[i])
     return dict1
 
+def get_bug_ids(datasets):
+    bug_id_check = {}
+    for data_dict in datasets:
+        title = data_dict['title']
+        match = re.findall(r"[(][0-9]*[)]" ,title)
+        bug_id = int(match[0][1:-1])
+        bug_id_check[bug_id] = False
+    return bug_id_check
 
 '''
 special_wordfile = '/home/mich_qiu/PycharmProjects/MSc_Thesis/PreSumm_Bug/src/prepro/special_words.txt'
