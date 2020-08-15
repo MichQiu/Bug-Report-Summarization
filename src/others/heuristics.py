@@ -90,7 +90,7 @@ class Heuristics():
         question_sents_idxs = []
         parser = stanford.StanfordParser(
             model_path=self.args.treebank_file)
-        sentences = parser.raw_parse_sents(text)
+        sentences = parser.raw_parse_sents(tuple(text))
         cfg_tree_list = [list(dep_graphs) for dep_graphs in sentences]
         for i in range(len(text)):
             finish = False
