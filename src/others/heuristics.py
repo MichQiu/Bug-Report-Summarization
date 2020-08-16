@@ -1,5 +1,8 @@
 import os
+import re
+import stanza
 from nltk.parse import stanford
+from nltk.corpus import wordnet
 
 os.environ['STANFORD_PARSER'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
 os.environ['STANFORD_MODELS'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
@@ -8,6 +11,7 @@ class Heuristics():
     def __init__(self, args, data_dict):
         self.args = args
         self.data_dict = data_dict
+        self.pipeline = stanza.Pipeline(lang='en', processors='tokenize,mwt,pos')
 
     def evaluate_sent(self, word_file):
         """Get indices for evaluative and duplicate sentences"""
@@ -110,3 +114,22 @@ class Heuristics():
                         finish = True
                         continue
         return question_sents_idxs
+
+    def _is_statement(self, text):
+        tags = []
+        with open(self.args.heuristics_txt, 'r') as f:
+            for line in f:
+                sent = line.split()
+                for word in sent:
+                    if word not in tags:
+                        pass
+
+
+    def _synonyms(self, word):
+        syns = wordnet.synsets(word)
+        synonyms = [i.name() for syn in syns for i in syn.lemmas()]
+        synonyms = list(dict.fromkeys(synonyms))
+        return synonyms
+
+    def _POS(self, word):
+        word_POS = self.pipeline(word)
