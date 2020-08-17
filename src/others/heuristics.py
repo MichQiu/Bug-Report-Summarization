@@ -3,6 +3,7 @@ import re
 import stanza
 from nltk.parse import stanford
 from nltk.corpus import wordnet
+from copy import deepcopy
 
 os.environ['STANFORD_PARSER'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
 os.environ['STANFORD_MODELS'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
@@ -116,20 +117,62 @@ class Heuristics():
         return question_sents_idxs
 
     def _is_statement(self, text):
-        tags = []
-        with open(self.args.heuristics_txt, 'r') as f:
+        """Check if sentences are statements"""
+        statement_sents_idxs = []
+        with open(self.args.heuristics, 'r') as f:
             for line in f:
                 sent = line.split()
-                for word in sent:
-                    if word not in tags:
-                        pass
+                for i in range(len(text)):
+                    check = self.compare(sent, text[i])
+                    if check:
+                        statement_sents_idxs.append(i)
+        return statement_sents_idxs
 
+    def compare(self, heur_text, text_sent):
+        """Comparing sentences between heuristics and target and counting the number of matches"""
+        tags = []
+        no_of_match = 0
+        for i in range(len(heur_text)):
+            if no_of_match != i:
+                break
+            _word = heur_text[i]
+            if _word in tags:
+                match = False
+                for tag in tags:
+                    if match is True:
+                        continue
+                    elif _word == tag:
+                        _pos_tag = self._POS(_word)
+                        self._compare(text_sent, no_of_match, match, _pos_tag, 'tag')
+            else:
+                self._compare(text_sent, no_of_match, _word)
+        if no_of_match == len(heur_text):
+            return True
+        else:
+            return False
 
-    def _synonyms(self, word):
-        syns = wordnet.synsets(word)
-        synonyms = [i.name() for syn in syns for i in syn.lemmas()]
-        synonyms = list(dict.fromkeys(synonyms))
-        return synonyms
+    def _compare(self, text_sent, no_of_match, match=False, _word=None, _pos_tag=None, type='word'):
+        """Comparing a word from a heuristics sentence to words in a target sentence"""
+        for j in range(len(text_sent)):
+            if type == 'word':
+                word = text_sent[j]
+                if word == _word:
+                    no_of_match += 1
+                    break
+                else:
+                    pass
+            elif type == 'tag':
+                pos_tag = self._POS(text_sent[j])
+                if pos_tag == _pos_tag:
+                    no_of_match += 1
+                    match = True
+                    break
+                else:
+                    pass
 
     def _POS(self, word):
+        """Obtain the POS tag of a word"""
         word_POS = self.pipeline(word)
+        word_POS_dict = word_POS.to_dict()
+        pos_tag = word_POS_dict[0][0]['upos']
+        return pos_tag
