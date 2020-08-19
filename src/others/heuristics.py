@@ -2,8 +2,6 @@ import os
 import re
 import stanza
 from nltk.parse import stanford
-from nltk.corpus import wordnet
-from copy import deepcopy
 
 os.environ['STANFORD_PARSER'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
 os.environ['STANFORD_MODELS'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
@@ -17,7 +15,7 @@ class Heuristics():
     def evaluate_sent(self, word_file):
         """Get indices for evaluative and duplicate sentences"""
         all_sent_idxs = {}
-        with open(word_file, 'r') as f:
+        with open(word_file, 'r') as f: # text file including all the special words and their positions
             for line in f:
                 words = line.split()
                 if words[-1] == 'first':
@@ -130,7 +128,8 @@ class Heuristics():
 
     def compare(self, heur_text, text_sent):
         """Comparing sentences between heuristics and target and counting the number of matches"""
-        tags = []
+        tags = {"[something]": ('NOUN', 'PRON', 'PROPN'), "[someone]": ('NOUN', 'PRON', 'PROPN'),
+                "[verb]": ('VERB'), "[link]": ('SYM'), "[date]": ('NUM')}
         no_of_match = 0
         for i in range(len(heur_text)):
             if no_of_match != i:
@@ -138,12 +137,12 @@ class Heuristics():
             _word = heur_text[i]
             if _word in tags:
                 match = False
-                for tag in tags:
+                for tag in tags.keys():
                     if match is True:
                         continue
                     elif _word == tag:
-                        _pos_tag = self._POS(_word)
-                        self._compare(text_sent, no_of_match, match, _pos_tag, 'tag')
+                        _pos_tags = tags[tag]
+                        self._compare(text_sent, no_of_match, match, _pos_tags, 'tag')
             else:
                 self._compare(text_sent, no_of_match, _word)
         if no_of_match == len(heur_text):
@@ -151,7 +150,7 @@ class Heuristics():
         else:
             return False
 
-    def _compare(self, text_sent, no_of_match, match=False, _word=None, _pos_tag=None, type='word'):
+    def _compare(self, text_sent, no_of_match, match=False, _word=None, _pos_tags=None, type='word'):
         """Comparing a word from a heuristics sentence to words in a target sentence"""
         for j in range(len(text_sent)):
             if type == 'word':
@@ -163,7 +162,7 @@ class Heuristics():
                     pass
             elif type == 'tag':
                 pos_tag = self._POS(text_sent[j])
-                if pos_tag == _pos_tag:
+                if pos_tag in _pos_tags:
                     no_of_match += 1
                     match = True
                     break
