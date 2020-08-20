@@ -170,7 +170,7 @@ class Heuristics():
     def _is_description_pr(self, text):
         """Check if sentences are descriptions in pretraining data"""
         description_sent_idxs = []
-        if 'http' not in text[0]:
+        if 'http' not in text[0]: # need to include more words for avoiding splitting by mistake
             split_text = text[0].split('.')
             if split_text[-1] == '':
                 split_text.pop(-1)

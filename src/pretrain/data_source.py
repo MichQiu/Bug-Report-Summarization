@@ -210,7 +210,7 @@ def get_text(idx):
     src_text = []
     for j in range(1, len(comments)):
         text = comments[j]['raw_text']
-        if 'http' not in text:
+        if 'http' not in text: # need to include more words for avoiding splitting by mistake
             split_text = text.split('.')
             if split_text[-1] == '':
                 split_text.pop(-1)
