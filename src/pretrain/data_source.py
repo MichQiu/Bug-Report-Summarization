@@ -76,7 +76,7 @@ class BugSource():
         pool = Pool(self.args.n_cpus)
         for d in pool.imap(self._get_text, bug_ids):
             bug_id, src_text = d
-            bug_comment[bug_id] = src_text
+            bug_comments[bug_id] = src_text
         pool.close()
         pool.join()
         return product, bug_comments
@@ -86,8 +86,17 @@ class BugSource():
         bug = self.bzapi.getbug(bug_id)
         comments = bug.getcomments()
         src_text = []
-        for j in range(len(comments)):
-            src_text.append(comments[j]['raw_text'])
+        for j in range(1, len(comments)):
+            text = comments[j]['raw_text']
+            if 'http' not in text:
+                split_text = text.split('.')
+                if split_text[-1] == '':
+                    split_text.pop(-1)
+                for sent in split_text:
+                    sent = sent + '.'
+                    src_text.append(sent)
+            else:
+                src_text.append(text)
         return bug_id, src_text
 
     def remove_empty_products(self):
@@ -199,8 +208,17 @@ def get_text(idx):
     bug = bzapi.getbug(bug_id)
     comments = bug.getcomments()
     src_text = []
-    for j in range(len(comments)):
-        src_text.append(comments[j]['raw_text'])
+    for j in range(1, len(comments)):
+        text = comments[j]['raw_text']
+        if 'http' not in text:
+            split_text = text.split('.')
+            if split_text[-1] == '':
+                split_text.pop(-1)
+            for sent in split_text:
+                sent = sent + '.'
+                src_text.append(sent)
+        else:
+            src_text.append(text)
     return bug_id, src_text
 
 t1 = time.time()
