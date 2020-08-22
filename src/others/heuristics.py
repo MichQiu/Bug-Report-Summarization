@@ -1,8 +1,10 @@
 import os
 import re
+import torch
 import stanza
 from copy import deepcopy
 from nltk.parse import stanford
+from multiprocessing import Pool
 
 os.environ['STANFORD_PARSER'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
 os.environ['STANFORD_MODELS'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
@@ -269,6 +271,21 @@ class Heuristics():
         pos_tag = word_POS_dict[0][0]['upos']
         return pos_tag
 
+def apply_heuristics(args):
+    pool = Pool(args.n_cpus)
+    if args.bug_comments:
+        comment_list = list(args.bug_comments.values())
+        pool_list = [(args, comment) for comment in comment_list]
+    elif args.data_dict:
+        comment_list = [bug['src_text'] for bug in args.data_dict]
+        pool_list = [(args, comment) for comment in comment_list]
+    heuristics_dataset = []
+    for d in pool.imap(_apply_heuristics, pool_list):
+        h_bug_comments = d
+        heuristics_dataset.append(h_bug_comments)
+    pool.close()
+    pool.join()
+    torch.save(heuristics_dataset, args.save_file)
 
 def _apply_heuristics(args, data):
     data_type = isinstance(data, list)
