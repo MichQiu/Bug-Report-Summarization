@@ -47,8 +47,7 @@ class Heuristics():
             elif last:
                 if sent[-1] == word:
                     sent_idxs_lst.append(i)
-            else:
-                if word in sent:
+            elif word in sent:
                     sent_idxs_lst.append(i)
         return sent_idxs_lst
 
@@ -109,6 +108,7 @@ class Heuristics():
     def identify_intent_ft(self, text):
         """Assign intentions to sentences for finetune data"""
         tagged_idx = []
+        eval_dup_sent_idxs = self.evaluate_sent(self.args.eval_words)
         comment_bounds = self._get_comment_bounds()
         description_sent_idxs = self._is_description(comment_bounds)
         question_sent_idxs = self._is_question(text)
@@ -130,6 +130,12 @@ class Heuristics():
         for idx in range(len(text)):
             if idx not in tagged_idx:
                 text[idx] = ["NO"] + text[idx]
+        for words in eval_dup_sent_idxs:
+            eval_dup_sents = eval_dup_sent_idxs[words]
+            for dup in eval_dup_sents:
+                text[dup] = text[dup] + ["DUP"]
+                for eval in eval_dup_sents[dup]:
+                    text[eval] = text[eval] + ["EVAL"]
 
     def _get_comment_bounds(self):
         """Get the sentence index boundaries for each comment"""
