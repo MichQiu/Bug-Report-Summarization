@@ -5,6 +5,7 @@ import stanza
 from copy import deepcopy
 from nltk.parse import stanford
 from multiprocessing import Pool
+from pretrain.data_source import custom_split
 
 os.environ['STANFORD_PARSER'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
 os.environ['STANFORD_MODELS'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
@@ -16,7 +17,7 @@ class Heuristics():
         :param bug_comments: individual bug comments from pretrain data (bug_comments[bug_id], type: list)
         :param data_dict: individual bug reports from finetune data (type: dict)
         *Note that heuristics must be applied after the text has been tokenized regularly than joined back as
-        strings to be tokenized again using BERT tokenizer
+        strings to be tokenized again using the BERT tokenizer
         """
         self.args = args
         self.bug_comments = bug_comments
@@ -83,61 +84,81 @@ class Heuristics():
             eval_dup_dict[idx] = eval_idx
         return eval_dup_dict
 
-    def identify_intent_pr(self, text):
+    def identify_intent_pr(self):
         """Assign intentions to sentences for pretraining data"""
         tagged_idx = []
-        description_sent_idxs = self._is_description_pr(text)
-        question_sent_idxs = self._is_question(text)
-        statement_sent_idxs = self._is_statement(text)
+        description_sent_idxs = self._is_description_pr()
+        question_sent_idxs = self._is_question(self.bug_comments)
+        statement_sent_idxs = self._is_statement(self.bug_comments)
         for idx in description_sent_idxs:
-            text[idx] = ['DS'] + text[idx]
+            tokens = self.bug_comments[idx].split()
+            tagged_tokens = ['QS'] + tokens
+            self.bug_comments[idx] = ''.join(tagged_tokens)
             tagged_idx.append(idx)
         for idx in question_sent_idxs:
             if idx in tagged_idx:
                 pass
             else:
-                text[idx] = ['QS'] + text[idx]
+                tokens = self.bug_comments[idx].split()
+                tagged_tokens = ['QS'] + tokens
+                self.bug_comments[idx] = ''.join(tagged_tokens)
                 tagged_idx.append(idx)
         for idx in statement_sent_idxs:
             if idx in tagged_idx:
                 pass
             else:
-                text[idx] = ['ST'] + text[idx]
-        for idx in range(len(text)):
+                tokens = self.bug_comments[idx].split()
+                tagged_tokens = ['QS'] + tokens
+                self.bug_comments[idx] = ''.join(tagged_tokens)
+        for idx in range(len(self.bug_comments)):
             if idx not in tagged_idx:
-                text[idx] = ["NO"] + text[idx]
+                tokens = self.bug_comments[idx].split()
+                tagged_tokens = ['QS'] + tokens
+                self.bug_comments[idx] = ''.join(tagged_tokens)
 
-    def identify_intent_ft(self, text):
+    def identify_intent_ft(self):
         """Assign intentions to sentences for finetune data"""
         tagged_idx = []
         eval_dup_sent_idxs = self.evaluate_sent(self.args.eval_words)
         comment_bounds = self._get_comment_bounds()
         description_sent_idxs = self._is_description(comment_bounds)
-        question_sent_idxs = self._is_question(text)
-        statement_sent_idxs = self._is_statement(text)
+        question_sent_idxs = self._is_question(self.data_dict['src_text'])
+        statement_sent_idxs = self._is_statement(self.data_dict['src_text'])
         for idx in description_sent_idxs:
-            text[idx] = ['DS'] + text[idx]
+            tokens = self.data_dict['src_text'][idx].split()
+            tagged_tokens = ['DS'] + tokens
+            self.data_dict['src_text'][idx] = ''.join(tagged_tokens)
             tagged_idx.append(idx)
         for idx in question_sent_idxs:
             if idx in tagged_idx:
                 pass
             else:
-                text[idx] = ['QS'] + text[idx]
-                tagged_idx.append(idx)
+                tokens = self.data_dict['src_text'][idx].split()
+                tagged_tokens = ['QS'] + tokens
+                self.data_dict['src_text'][idx] = ''.join(tagged_tokens)
+            tagged_idx.append(idx)
         for idx in statement_sent_idxs:
             if idx in tagged_idx:
                 pass
             else:
-                text[idx] = ['ST'] + text[idx]
-        for idx in range(len(text)):
+                tokens = self.data_dict['src_text'][idx].split()
+                tagged_tokens = ['ST'] + tokens
+                self.data_dict['src_text'][idx] = ''.join(tagged_tokens)
+        for idx in range(len(self.data_dict['src_text'])):
             if idx not in tagged_idx:
-                text[idx] = ["NO"] + text[idx]
+                tokens = self.data_dict['src_text'][idx].split()
+                tagged_tokens = ['NO'] + tokens
+                self.data_dict['src_text'][idx] = ''.join(tagged_tokens)
         for words in eval_dup_sent_idxs:
             eval_dup_sents = eval_dup_sent_idxs[words]
             for dup in eval_dup_sents:
-                text[dup] = text[dup] + ["DUP"]
+                tokens = self.data_dict['src_text'][dup].split()
+                tagged_tokens = ['DUP'] + tokens
+                self.data_dict['src_text'][dup] = ''.join(tagged_tokens)
                 for eval in eval_dup_sents[dup]:
-                    text[eval] = text[eval] + ["EVAL"]
+                    tokens = self.data_dict['src_text'][eval].split()
+                    tagged_tokens = ['EVAL'] + tokens
+                    self.data_dict['src_text'][eval] = ''.join(tagged_tokens)
 
     def _get_comment_bounds(self):
         """Get the sentence index boundaries for each comment"""
@@ -170,43 +191,32 @@ class Heuristics():
                 node_l = node_list[j].lhs().symbol()
                 if node_l == 'SBARQ' or node_l == 'SQ':
                     question_sent_idxs.append(i)
-                    text[i] = ['[QT]'] + text[i]
                     continue
                 node_tup = node_list[j].rhs()
                 for k in range(len(node_tup)):
                     node_r = node_tup[k].symbol()
                     if node_r == 'SBARQ' or node_r == 'SQ':
                         question_sent_idxs.append(i)
-                        text[i] = ['[QT]'] + text[i]
                         finish = True
                         continue
         return question_sent_idxs
 
-    def _is_description_pr(self, text):
+    def _is_description_pr(self):
         """Check if sentences are descriptions in pretraining data"""
         description_sent_idxs = []
         description_sent = []
-        text[0] = text[0].replace('\n', ' ')
-        for k in range(len(text[0])):
-            if text[0][k] == '.' and k != (len(text[0]) - 1):
-                if text[0][k + 1] is not ' ':
-                    description_sent_idxs.append(0)
-                    break
-            elif k == (len(text) - 1):
-                split_text = text.split('.')
-                if split_text[-1] == '':
-                    split_text.pop(-1)
-                for sent in split_text:
-                    if '?' or '!' in sent:
-                        pass
-                    else:
-                        sent = sent + '.'
-                    description_sent.append(sent)
+        split_chars = ['.', '?', '!']
+        self.bug_comments[0] = self.bug_comments[0].replace('\n', ' ')
+        split_text = custom_split(self.bug_comments[0], split_chars)
+        for sent in split_text:
+            description_sent.append(sent)
         if len(description_sent) > 1:
-            text.pop(0)
-            text = description_sent + text
-            for idx, sent in enumerate(text):
+            self.bug_comments.pop(0)
+            self.bug_comments = description_sent + self.bug_comments
+            for idx, sent in enumerate(self.bug_comments):
                 description_sent_idxs.append(idx)
+        else:
+            description_sent_idxs.append(0)
         return description_sent_idxs
 
     def _is_statement(self, text):
@@ -223,6 +233,7 @@ class Heuristics():
 
     def compare(self, heur_text, text_sent):
         """Comparing sentences between heuristics and target and counting the number of matches"""
+        text_sent = text_sent.split()
         tags = {"[something]": ('NOUN', 'PRON', 'PROPN'), "[someone]": ('NOUN', 'PRON', 'PROPN'),
                 "[verb]": ('VERB'), "[link]": ('SYM'), "[date]": ('NUM')}
         no_of_match = 0
@@ -271,13 +282,19 @@ class Heuristics():
         pos_tag = word_POS_dict[0][0]['upos']
         return pos_tag
 
+def apply_all_data(args):
+    with open(args.data_file, 'r') as f:
+        for line in f:
+            args.bug_comments = line
+            apply_heuristics(args)
+
 def apply_heuristics(args):
     pool = Pool(args.n_cpus)
     if args.bug_comments:
         comment_list = list(args.bug_comments.values())
         pool_list = [(args, comment) for comment in comment_list]
-    elif args.data_dict:
-        comment_list = [bug['src_text'] for bug in args.data_dict]
+    elif args.datasets:
+        comment_list = [bug for bug in args.datasets]
         pool_list = [(args, comment) for comment in comment_list]
     heuristics_dataset = []
     for d in pool.imap(_apply_heuristics, pool_list):

@@ -86,24 +86,13 @@ class BugSource():
         bug = self.bzapi.getbug(bug_id)
         comments = bug.getcomments()
         src_text = []
+        split_chars = ['.', '?', '!']
         for j in range(1, len(comments)):
             text = comments[j]['raw_text']
             text = text.replace('\n', ' ')
-            for k in range(len(text)):
-                if text[k] == '.' and k != (len(text) - 1):
-                    if text[k + 1] is not ' ':
-                        src_text.append(text)
-                        break
-                elif k == (len(text) - 1):
-                    split_text = text.split('.')
-                    if split_text[-1] == '':
-                        split_text.pop(-1)
-                    for sent in split_text:
-                        if '?' or '!' in sent:
-                            pass
-                        else:
-                            sent = sent + '.'
-                        src_text.append(sent)
+            split_text = custom_split(text, split_chars)
+            for sent in split_text:
+                src_text.append(sent)
         return bug_id, src_text
 
     def remove_empty_products(self):
@@ -148,6 +137,24 @@ class BugSource():
                 self.finetune_ids[id] = True
         return product, bug_ids
 
+def custom_split(input_string, split_chars):
+    start_idx = 0
+    end_idx = 0
+    split_string_list = []
+    char_list = list(input_string)
+    for idx, char in enumerate(char_list):
+        if idx == (len(char_list) - 1):
+            end_idx = idx + 1
+            char_list_selection = char_list[start_idx:end_idx]
+            split_string = ''.join(char_list_selection)
+            split_string_list.append(split_string)
+        elif char in split_chars and char_list[idx+1] == ' ':
+            end_idx = idx
+            char_list_selection = char_list[start_idx:end_idx+1]
+            split_string = ''.join(char_list_selection)
+            split_string_list.append(split_string)
+            start_idx = idx + 2
+    return split_string_list
 
 def source_data(args, mozilla=False):
     if mozilla:
@@ -215,24 +222,13 @@ def get_text(idx):
     bug = bzapi.getbug(bug_id)
     comments = bug.getcomments()
     src_text = []
+    split_chars = ['.', '?', '!']
     for j in range(1, len(comments)):
         text = comments[j]['raw_text']
         text = text.replace('\n', ' ')
-        for k in range(len(text)):
-            if text[k] == '.' and k != (len(text) - 1):
-                if text[k+1] is not ' ':
-                    src_text.append(text)
-                    break
-            elif k == (len(text) - 1):
-                split_text = text.split('.')
-                if split_text[-1] == '':
-                    split_text.pop(-1)
-                for sent in split_text:
-                    if '?' or '!' in sent:
-                        pass
-                    else:
-                        sent = sent + '.'
-                    src_text.append(sent)
+        split_text = custom_split(text, split_chars)
+        for sent in split_text:
+            src_text.append(sent)
     return bug_id, src_text
 
 def get_text_old(idx):
