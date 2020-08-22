@@ -8,12 +8,13 @@ os.environ['STANFORD_PARSER'] = '/home/mich_qiu/Standford_parser/stanford-parser
 os.environ['STANFORD_MODELS'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
 
 class Heuristics():
-    def __init__(self, args, bug_comments, data_dict):
+    def __init__(self, args, bug_comments=None, data_dict=None):
         """
         :param args: parsed arguments
         :param bug_comments: individual bug comments from pretrain data (bug_comments[bug_id], type: list)
         :param data_dict: individual bug reports from finetune data (type: dict)
-        *Note that heuristics must be applied after the text has been tokenized
+        *Note that heuristics must be applied after the text has been tokenized regularly than joined back as
+        strings to be tokenized again using BERT tokenizer
         """
         self.args = args
         self.bug_comments = bug_comments
@@ -62,7 +63,7 @@ class Heuristics():
             elif position == 'last':
                 sent_tokens.pop()
             eval_idx = []
-            for i in range(idx):  # all other sentences
+            for i in range(idx):  # all other sentences up to the duplicate sentence index
                 other_tokens = self.data_dict['src_text'][i].split()
                 if len(other_tokens) - len(sent_tokens) > 5:
                     pass
@@ -101,6 +102,9 @@ class Heuristics():
                 pass
             else:
                 text[idx] = ['ST'] + text[idx]
+        for idx in range(len(text)):
+            if idx not in tagged_idx:
+                text[idx] = ["NO"] + text[idx]
 
     def identify_intent_ft(self, text):
         """Assign intentions to sentences for finetune data"""
@@ -123,6 +127,9 @@ class Heuristics():
                 pass
             else:
                 text[idx] = ['ST'] + text[idx]
+        for idx in range(len(text)):
+            if idx not in tagged_idx:
+                text[idx] = ["NO"] + text[idx]
 
     def _get_comment_bounds(self):
         """Get the sentence index boundaries for each comment"""
@@ -170,18 +177,28 @@ class Heuristics():
     def _is_description_pr(self, text):
         """Check if sentences are descriptions in pretraining data"""
         description_sent_idxs = []
-        if 'http' not in text[0]: # need to include more words for avoiding splitting by mistake
-            split_text = text[0].split('.')
-            if split_text[-1] == '':
-                split_text.pop(-1)
-                for i in range(len(split_text)):
-                    split_text[i] = split_text[i] + '.'
+        description_sent = []
+        text[0] = text[0].replace('\n', ' ')
+        for k in range(len(text[0])):
+            if text[0][k] == '.' and k != (len(text[0]) - 1):
+                if text[0][k + 1] is not ' ':
+                    description_sent_idxs.append(0)
+                    break
+            elif k == (len(text) - 1):
+                split_text = text.split('.')
+                if split_text[-1] == '':
+                    split_text.pop(-1)
+                for sent in split_text:
+                    if '?' or '!' in sent:
+                        pass
+                    else:
+                        sent = sent + '.'
+                    description_sent.append(sent)
+        if len(description_sent) > 1:
             text.pop(0)
-            text = split_text + text
+            text = description_sent + text
             for idx, sent in enumerate(text):
                 description_sent_idxs.append(idx)
-        else:
-            description_sent_idxs.append(0)
         return description_sent_idxs
 
     def _is_statement(self, text):
@@ -245,3 +262,17 @@ class Heuristics():
         word_POS_dict = word_POS.to_dict()
         pos_tag = word_POS_dict[0][0]['upos']
         return pos_tag
+
+
+def _apply_heuristics(args, data):
+    data_type = isinstance(data, list)
+    if data_type is False:
+        data_type = isinstance(data, dict)
+        assert data_type is True
+        heuristics = Heuristics(args, data_dict=data)
+        heuristics.identify_intent_ft(heuristics.data_dict['src_text'])
+        return heuristics.data_dict
+    else:
+        heuristics = Heuristics(args, bug_comments=data)
+        heuristics.identify_intent_pr(heuristics.bug_comments)
+        return heuristics.bug_comments

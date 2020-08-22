@@ -88,15 +88,22 @@ class BugSource():
         src_text = []
         for j in range(1, len(comments)):
             text = comments[j]['raw_text']
-            if 'http' not in text:
-                split_text = text.split('.')
-                if split_text[-1] == '':
-                    split_text.pop(-1)
-                for sent in split_text:
-                    sent = sent + '.'
-                    src_text.append(sent)
-            else:
-                src_text.append(text)
+            text = text.replace('\n', ' ')
+            for k in range(len(text)):
+                if text[k] == '.' and k != (len(text) - 1):
+                    if text[k + 1] is not ' ':
+                        src_text.append(text)
+                        break
+                elif k == (len(text) - 1):
+                    split_text = text.split('.')
+                    if split_text[-1] == '':
+                        split_text.pop(-1)
+                    for sent in split_text:
+                        if '?' or '!' in sent:
+                            pass
+                        else:
+                            sent = sent + '.'
+                        src_text.append(sent)
         return bug_id, src_text
 
     def remove_empty_products(self):
@@ -210,15 +217,32 @@ def get_text(idx):
     src_text = []
     for j in range(1, len(comments)):
         text = comments[j]['raw_text']
-        if 'http' not in text: # need to include more words for avoiding splitting by mistake
-            split_text = text.split('.')
-            if split_text[-1] == '':
-                split_text.pop(-1)
-            for sent in split_text:
-                sent = sent + '.'
-                src_text.append(sent)
-        else:
-            src_text.append(text)
+        text = text.replace('\n', ' ')
+        for k in range(len(text)):
+            if text[k] == '.' and k != (len(text) - 1):
+                if text[k+1] is not ' ':
+                    src_text.append(text)
+                    break
+            elif k == (len(text) - 1):
+                split_text = text.split('.')
+                if split_text[-1] == '':
+                    split_text.pop(-1)
+                for sent in split_text:
+                    if '?' or '!' in sent:
+                        pass
+                    else:
+                        sent = sent + '.'
+                    src_text.append(sent)
+    return bug_id, src_text
+
+def get_text_old(idx):
+    bug_id = bugs[idx].id
+    bug = bzapi.getbug(bug_id)
+    comments = bug.getcomments()
+    src_text = []
+    for j in range(1, len(comments)):
+        text = comments[j]['raw_text']
+        src_text.append(text)
     return bug_id, src_text
 
 t1 = time.time()
