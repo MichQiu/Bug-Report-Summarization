@@ -222,7 +222,7 @@ class Heuristics():
             description_sent_idxs.append(0)
         return description_sent_idxs
 
-    def _is_statement(self, text):
+    def _is_statement(self, text): #tested
         """Check if sentences are statements"""
         statement_sent_idxs = []
         with open(self.args.heuristics, 'r') as f:
@@ -237,7 +237,8 @@ class Heuristics():
     def compare(self, heur_text, text_sent): #tested
         """Comparing sentences between heuristics and target and counting the number of matches"""
         text_sent = text_sent.split()
-        assert len(text_sent) >= len(heur_text)
+        if len(text_sent) < len(heur_text):
+            return False
         tags = {"[something]": ('NOUN', 'PRON', 'PROPN'), "[someone]": ('NOUN', 'PRON', 'PROPN'),
                 "[verb]": ('VERB'), "[link]": ('SYM'), "[date]": ('NUM')}
         no_of_match = 0

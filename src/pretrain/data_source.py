@@ -200,6 +200,7 @@ for d in pool.imap(func, [1, 2, 3, 4]):
 pool.close()
 pool.join()
 
+'''
 def temp():
     bugreport_len = {}
     pool = Pool(8)
@@ -211,6 +212,7 @@ def temp():
     return bugreport_len
 
 a = temp()
+'''
 
 t1 = time.time()
 bugs = bzapi.query(query)

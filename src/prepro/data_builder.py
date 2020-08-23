@@ -20,7 +20,7 @@ data = "/home/mich_qiu/PycharmProjects/MSc_Thesis/data/IBRS-Corpus/bugreports.xm
 annotated_data = "/home/mich_qiu/PycharmProjects/MSc_Thesis/data/IBRS-Corpus/annotation.xml"
 '''
 
-def load_xml_bug(data, annotated=False):
+def load_xml_bug(data, annotated=False): #tested
     tree = ET.parse(data)
     root = tree.getroot()
 
@@ -102,21 +102,20 @@ def load_xml_bug(data, annotated=False):
             datasets.append(data_dict)
         return datasets
 
-def data_dict_combine(dict1, dict2):
+def data_dict_combine(dict1, dict2): #tested
     for i in range(len(dict1)):
         dict1[i].update(dict2[i])
     return dict1
 
-def get_bug_ids(datasets, id_save_path):
+def get_bug_ids(datasets, id_save_path): #tested
     bug_id_check = {}
     for data_dict in datasets:
         title = data_dict['title']
-        match = re.findall(r"[(][0-9]*[)]" ,title)
+        match = re.findall(r"[(][0-9]*[)]", title)
         bug_id = int(match[0][1:-1])
         bug_id_check[bug_id] = False
-    with open(id_save_path, 'w+') as f:
-        pickle.dump(bug_id_check, f)
-    f.close()
+    file = open(id_save_path, 'wb+')
+    pickle.dump(bug_id_check, file)
 
 '''
 special_wordfile = '/home/mich_qiu/PycharmProjects/MSc_Thesis/PreSumm_Bug/src/prepro/special_words.txt'
