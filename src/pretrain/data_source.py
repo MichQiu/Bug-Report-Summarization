@@ -87,6 +87,7 @@ class BugSource():
         comments = bug.getcomments()
         src_text = []
         split_chars = ['.', '?', '!']
+        src_text.append(comments[0]['raw_text'])
         for j in range(1, len(comments)):
             text = comments[j]['raw_text']
             text = text.replace('\n', ' ')
@@ -223,6 +224,7 @@ def get_text(idx):
     comments = bug.getcomments()
     src_text = []
     split_chars = ['.', '?', '!']
+    src_text.append(comments[0]['raw_text'])
     for j in range(1, len(comments)):
         text = comments[j]['raw_text']
         text = text.replace('\n', ' ')

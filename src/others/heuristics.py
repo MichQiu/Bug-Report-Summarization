@@ -2,6 +2,7 @@ import os
 import re
 import torch
 import stanza
+import time
 from copy import deepcopy
 from nltk.parse import stanford
 from multiprocessing import Pool
@@ -24,7 +25,7 @@ class Heuristics():
         self.data_dict = data_dict
         self.pipeline = stanza.Pipeline(lang='en', processors='tokenize,mwt,pos')
 
-    def evaluate_sent(self, word_file):
+    def evaluate_sent(self, word_file): #tested
         """Get indices for evaluative and duplicate sentences"""
         all_sent_idxs = {}
         with open(word_file, 'r') as f: # text file including all the special words and their positions
@@ -39,7 +40,7 @@ class Heuristics():
                 all_sent_idxs[words[0]] = eval_dup_dict
             return all_sent_idxs
 
-    def _get_special_sents(self, word, first=False, last=False):
+    def _get_special_sents(self, word, first=False, last=False): #tested
         """Get a list of indices of sentences that includes a specific word"""
         sent_idxs_lst = []
         for i in range(len(self.data_dict['src_text'])):
@@ -54,7 +55,7 @@ class Heuristics():
                     sent_idxs_lst.append(i)
         return sent_idxs_lst
 
-    def _get_eval_dup_dict(self, position, sent_idxs):
+    def _get_eval_dup_dict(self, position, sent_idxs): #tested
         """Get a dict containing the indices of evaluative and duplicate sentences"""
         eval_dup_dict = {}
         for idx in sent_idxs:  # index of sentences that contains evaluation of other sentences
@@ -160,7 +161,7 @@ class Heuristics():
                     tagged_tokens = ['EVAL'] + tokens
                     self.data_dict['src_text'][eval] = ''.join(tagged_tokens)
 
-    def _get_comment_bounds(self):
+    def _get_comment_bounds(self): #tested
         """Get the sentence index boundaries for each comment"""
         comment_bounds = []
         for i in range(1, len(self.data_dict['sent_id'])):
@@ -170,12 +171,12 @@ class Heuristics():
                 comment_bounds.append(i)
         return comment_bounds
 
-    def _is_description(self, comment_bounds):
+    def _is_description(self, comment_bounds): #tested
         """Check if sentences are bug descriptions"""
         description_sent_idxs = [i for i in range(comment_bounds[0])]
         return description_sent_idxs
 
-    def _is_question(self, text):
+    def _is_question(self, text): #tested
         """Use CFG parsing to determine if a sentence is a question"""
         question_sent_idxs = []
         parser = stanford.StanfordParser(
@@ -194,26 +195,28 @@ class Heuristics():
                     continue
                 node_tup = node_list[j].rhs()
                 for k in range(len(node_tup)):
-                    node_r = node_tup[k].symbol()
-                    if node_r == 'SBARQ' or node_r == 'SQ':
-                        question_sent_idxs.append(i)
-                        finish = True
-                        continue
+                    if not isinstance(node_tup[k], str):
+                        node_r = node_tup[k].symbol()
+                        if node_r == 'SBARQ' or node_r == 'SQ':
+                            question_sent_idxs.append(i)
+                            finish = True
+                            continue
+            if i not in question_sent_idxs:
+                char_list = list(text[i])
+                if char_list[-1] == '?':
+                    question_sent_idxs.append(i)
         return question_sent_idxs
 
-    def _is_description_pr(self):
+    def _is_description_pr(self): #tested
         """Check if sentences are descriptions in pretraining data"""
         description_sent_idxs = []
-        description_sent = []
         split_chars = ['.', '?', '!']
         self.bug_comments[0] = self.bug_comments[0].replace('\n', ' ')
         split_text = custom_split(self.bug_comments[0], split_chars)
-        for sent in split_text:
-            description_sent.append(sent)
-        if len(description_sent) > 1:
+        if len(split_text) > 1:
             self.bug_comments.pop(0)
-            self.bug_comments = description_sent + self.bug_comments
-            for idx, sent in enumerate(self.bug_comments):
+            self.bug_comments = split_text + self.bug_comments
+            for idx, sent in enumerate(split_text):
                 description_sent_idxs.append(idx)
         else:
             description_sent_idxs.append(0)
@@ -231,51 +234,48 @@ class Heuristics():
                         statement_sent_idxs.append(i)
         return statement_sent_idxs
 
-    def compare(self, heur_text, text_sent):
+    def compare(self, heur_text, text_sent): #tested
         """Comparing sentences between heuristics and target and counting the number of matches"""
         text_sent = text_sent.split()
+        assert len(text_sent) >= len(heur_text)
         tags = {"[something]": ('NOUN', 'PRON', 'PROPN'), "[someone]": ('NOUN', 'PRON', 'PROPN'),
                 "[verb]": ('VERB'), "[link]": ('SYM'), "[date]": ('NUM')}
         no_of_match = 0
+        pattern = []
         for i in range(len(heur_text)):
-            if no_of_match != i:
-                break
             _word = heur_text[i]
             if _word in tags:
-                match = False
-                for tag in tags.keys():
-                    if match is True:
-                        continue
-                    elif _word == tag:
-                        _pos_tags = tags[tag]
-                        self._compare(text_sent, no_of_match, match, _pos_tags, 'tag')
+                _pos_tags = tags[_word]
+                pattern.append(('POS', _pos_tags))
             else:
-                self._compare(text_sent, no_of_match, _word)
-        if no_of_match == len(heur_text):
-            return True
-        else:
-            return False
-
-    def _compare(self, text_sent, no_of_match, match=False, _word=None, _pos_tags=None, type='word'):
-        """Comparing a word from a heuristics sentence to words in a target sentence"""
+                pattern.append(('WORD', _word))
         for j in range(len(text_sent)):
-            if type == 'word':
-                word = text_sent[j]
-                if word == _word or word == _word.lower():
-                    no_of_match += 1
-                    break
-                else:
-                    pass
-            elif type == 'tag':
-                pos_tag = self._POS(text_sent[j])
-                if pos_tag in _pos_tags:
-                    no_of_match += 1
-                    match = True
-                    break
-                else:
-                    pass
+            if (len(text_sent) - j) < len(pattern):
+                break
+            else:
+                t_pattern = text_sent[j:j + len(pattern)]
+                for k in range(len(pattern)):
+                    if pattern[k][0] == 'POS':
+                        pos_tag = self._POS(t_pattern[k])
+                        if pos_tag in pattern[k][1]:
+                            no_of_match += 1
+                            continue
+                        else:
+                            no_of_match = 0
+                            break
+                    elif pattern[k][0] == 'WORD':
+                        word = t_pattern[k]
+                        if word == pattern[k][1] or word.lower() == pattern[k][1]:
+                            no_of_match += 1
+                            continue
+                        else:
+                            no_of_match = 0
+                            break
+                if no_of_match == len(heur_text):
+                    return True
+        return False
 
-    def _POS(self, word):
+    def _POS(self, word): #tested
         """Obtain the POS tag of a word"""
         word_POS = self.pipeline(word)
         word_POS_dict = word_POS.to_dict()
