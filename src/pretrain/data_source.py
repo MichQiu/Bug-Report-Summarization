@@ -76,7 +76,8 @@ class BugSource():
         pool = Pool(self.args.n_cpus)
         for d in pool.imap(self._get_text, bug_ids):
             bug_id, src_text = d
-            bug_comments[bug_id] = src_text
+            if len(src_text) >= 15:
+                bug_comments[bug_id] = src_text
         pool.close()
         pool.join()
         return product, bug_comments
