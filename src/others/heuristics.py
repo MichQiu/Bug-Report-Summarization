@@ -2,6 +2,7 @@ import os
 import re
 import torch
 import stanza
+import pickle
 import time
 from copy import deepcopy
 from nltk.parse import stanford
@@ -90,10 +91,10 @@ class Heuristics():
         tagged_idx = []
         description_sent_idxs = self._is_description_pr()
         question_sent_idxs = self._is_question(self.bug_comments)
-        statement_sent_idxs = self._is_statement(self.bug_comments)
+        code_sent_idxs = self._is_code(self.bug_comments)
         for idx in description_sent_idxs:
             tokens = self.bug_comments[idx].split()
-            tagged_tokens = ['QS'] + tokens
+            tagged_tokens = ['DS'] + tokens
             self.bug_comments[idx] = ''.join(tagged_tokens)
             tagged_idx.append(idx)
         for idx in question_sent_idxs:
@@ -104,17 +105,18 @@ class Heuristics():
                 tagged_tokens = ['QS'] + tokens
                 self.bug_comments[idx] = ''.join(tagged_tokens)
                 tagged_idx.append(idx)
-        for idx in statement_sent_idxs:
+        for idx in code_sent_idxs:
             if idx in tagged_idx:
                 pass
             else:
                 tokens = self.bug_comments[idx].split()
-                tagged_tokens = ['QS'] + tokens
+                tagged_tokens = ['CO'] + tokens
                 self.bug_comments[idx] = ''.join(tagged_tokens)
+                tagged_idx.append(idx)
         for idx in range(len(self.bug_comments)):
             if idx not in tagged_idx:
                 tokens = self.bug_comments[idx].split()
-                tagged_tokens = ['QS'] + tokens
+                tagged_tokens = ['ST'] + tokens
                 self.bug_comments[idx] = ''.join(tagged_tokens)
 
     def identify_intent_ft(self):
@@ -124,7 +126,7 @@ class Heuristics():
         comment_bounds = self._get_comment_bounds()
         description_sent_idxs = self._is_description(comment_bounds)
         question_sent_idxs = self._is_question(self.data_dict['src_text'])
-        statement_sent_idxs = self._is_statement(self.data_dict['src_text'])
+        code_sent_idxs = self._is_code(self.data_dict['src_text'])
         for idx in description_sent_idxs:
             tokens = self.data_dict['src_text'][idx].split()
             tagged_tokens = ['DS'] + tokens
@@ -138,17 +140,18 @@ class Heuristics():
                 tagged_tokens = ['QS'] + tokens
                 self.data_dict['src_text'][idx] = ''.join(tagged_tokens)
             tagged_idx.append(idx)
-        for idx in statement_sent_idxs:
+        for idx in code_sent_idxs:
             if idx in tagged_idx:
                 pass
             else:
                 tokens = self.data_dict['src_text'][idx].split()
-                tagged_tokens = ['ST'] + tokens
+                tagged_tokens = ['CO'] + tokens
                 self.data_dict['src_text'][idx] = ''.join(tagged_tokens)
+            tagged_idx.append(idx)
         for idx in range(len(self.data_dict['src_text'])):
             if idx not in tagged_idx:
                 tokens = self.data_dict['src_text'][idx].split()
-                tagged_tokens = ['NO'] + tokens
+                tagged_tokens = ['ST'] + tokens
                 self.data_dict['src_text'][idx] = ''.join(tagged_tokens)
         for words in eval_dup_sent_idxs:
             eval_dup_sents = eval_dup_sent_idxs[words]
@@ -222,66 +225,17 @@ class Heuristics():
             description_sent_idxs.append(0)
         return description_sent_idxs
 
-    def _is_statement(self, text): #tested
-        """Check if sentences are statements"""
-        statement_sent_idxs = []
-        with open(self.args.heuristics, 'r') as f:
-            for line in f:
-                sent = line.split()
-                for i in range(len(text)):
-                    check = self.compare(sent, text[i])
-                    if check:
-                        statement_sent_idxs.append(i)
-        return statement_sent_idxs
-
-    def compare(self, heur_text, text_sent): #tested
-        """Comparing sentences between heuristics and target and counting the number of matches"""
-        text_sent = text_sent.split()
-        if len(text_sent) < len(heur_text):
-            return False
-        tags = {"[something]": ('NOUN', 'PRON', 'PROPN'), "[someone]": ('NOUN', 'PRON', 'PROPN'),
-                "[verb]": ('VERB'), "[link]": ('SYM'), "[date]": ('NUM')}
-        no_of_match = 0
-        pattern = []
-        for i in range(len(heur_text)):
-            _word = heur_text[i]
-            if _word in tags:
-                _pos_tags = tags[_word]
-                pattern.append(('POS', _pos_tags))
-            else:
-                pattern.append(('WORD', _word))
-        for j in range(len(text_sent)):
-            if (len(text_sent) - j) < len(pattern):
-                break
-            else:
-                t_pattern = text_sent[j:j + len(pattern)]
-                for k in range(len(pattern)):
-                    if pattern[k][0] == 'POS':
-                        pos_tag = self._POS(t_pattern[k])
-                        if pos_tag in pattern[k][1]:
-                            no_of_match += 1
-                            continue
-                        else:
-                            no_of_match = 0
-                            break
-                    elif pattern[k][0] == 'WORD':
-                        word = t_pattern[k]
-                        if word == pattern[k][1] or word.lower() == pattern[k][1]:
-                            no_of_match += 1
-                            continue
-                        else:
-                            no_of_match = 0
-                            break
-                if no_of_match == len(heur_text):
-                    return True
-        return False
-
-    def _POS(self, word): #tested
-        """Obtain the POS tag of a word"""
-        word_POS = self.pipeline(word)
-        word_POS_dict = word_POS.to_dict()
-        pos_tag = word_POS_dict[0][0]['upos']
-        return pos_tag
+    def _is_code(self, text):
+        code_sent_idxs = []
+        for i in range(len(text)): # add more regex patterns for different type of codes
+            with open(self.args.code_regex, 'rb+') as f:
+                regex = pickle.load(f)
+            code_tokens = re.findall(r''+regex, text[i])
+            all_tokens = text[i].split()
+            code_percentage = len(code_tokens) / len(all_tokens)
+            if code_percentage > 0.9:
+                code_sent_idxs.append(i)
+        return code_sent_idxs
 
 def apply_all_data(args):
     with open(args.data_file, 'r') as f:
