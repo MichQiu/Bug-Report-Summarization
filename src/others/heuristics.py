@@ -231,8 +231,10 @@ class Heuristics():
             with open(self.args.code_regex, 'rb+') as f:
                 regex = pickle.load(f)
             code_tokens = re.findall(r''+regex, text[i])
-            all_tokens = text[i].split()
-            code_percentage = len(code_tokens) / len(all_tokens)
+            match_len = 0
+            for j in range(len(code_tokens)):
+                match_len += len(code_tokens[j])
+            code_percentage = match_len / len(text[i])
             if code_percentage > 0.9:
                 code_sent_idxs.append(i)
         return code_sent_idxs
