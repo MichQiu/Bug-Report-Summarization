@@ -1,10 +1,6 @@
 import os
 import re
 import torch
-import stanza
-import pickle
-import time
-from copy import deepcopy
 from nltk.parse import stanford
 from multiprocessing import Pool
 from pretrain.data_source import custom_split
@@ -24,7 +20,6 @@ class Heuristics():
         self.args = args
         self.bug_comments = bug_comments
         self.data_dict = data_dict
-        self.pipeline = stanza.Pipeline(lang='en', processors='tokenize,mwt,pos')
 
     def evaluate_sent(self, word_file): #tested
         """Get indices for evaluative and duplicate sentences"""
@@ -225,18 +220,22 @@ class Heuristics():
             description_sent_idxs.append(0)
         return description_sent_idxs
 
-    def _is_code(self, text):
+    def _is_code(self, text): #tested
+        """Check if sentences mainly consist of code and non-natural language texts"""
         code_sent_idxs = []
         for i in range(len(text)): # add more regex patterns for different type of codes
-            with open(self.args.code_regex, 'rb+') as f:
-                regex = pickle.load(f)
-            code_tokens = re.findall(r''+regex, text[i])
-            match_len = 0
-            for j in range(len(code_tokens)):
-                match_len += len(code_tokens[j])
-            code_percentage = match_len / len(text[i])
-            if code_percentage > 0.9:
-                code_sent_idxs.append(i)
+            code_tokens = re.findall(r'([<a-zA-z0-9>(){}.,\-_/\\:;!@#$%^&*?\[\]|`~]+\.[<a-zA-z0-9>(){}.,\-_/\\:;!@#$%^&*?\[\]|`~]+)|([!@#$%^&*()\-_+=\[\]{}:;<>|\~`/\\]+[a-zA-z0-9]+)+|([!@#$%^&*()\-_+=\[\]{}:;<>|\~`/\\]+)+|([a-zA-Z0-9]+[!@#$%^&*()_+=\[\]{}:;<>|\~`/\\0-9]+[a-zA-Z0-9]+)+|([a-zA-Z0-9]+[!@#$%^&*()\-_+=\[\]{}:;<>|\~`/\\0-9]+)+|(\[.+\])|(\{.+\})|(\(.+\))', text[i])
+            cleaned_token_list = []
+            for token in code_tokens:
+                cleaned_code_token = ''.join(token)
+                cleaned_token_list.append(cleaned_code_token)
+            joined_tokens = ' '.join(cleaned_token_list)
+            if len(joined_tokens) > len(text[i]):
+                continue
+            else:
+                code_percentage = len(joined_tokens) / len(text[i])
+                if code_percentage > 0.5:
+                    code_sent_idxs.append(i)
         return code_sent_idxs
 
 def apply_all_data(args):
@@ -273,3 +272,22 @@ def _apply_heuristics(args, data):
         heuristics = Heuristics(args, bug_comments=data)
         heuristics.identify_intent_pr(heuristics.bug_comments)
         return heuristics.bug_comments
+"""
+def empty_pop(text):
+    pop_list = []
+    for i in range(len(text)):
+        if len(text[i]) == 0:
+            text.pop(i)
+
+def get_code_sent(text, idx_list):
+    for i in idx_list:
+        print(text[i])
+
+a, b = get_text(2)
+empty_pop(b)
+checking_2(b)
+
+def checking_2(text):
+    c = _is_code(text)
+    get_code_sent(text, c)
+"""

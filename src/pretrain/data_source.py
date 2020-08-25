@@ -11,6 +11,7 @@ import urllib.request as urllib2
 import pprint
 import bugzilla
 import torch
+from others.tokenization import _is_control, _is_whitespace
 
 class MyHTMLParser(HTMLParser):
     ls_data = []
@@ -91,7 +92,9 @@ class BugSource():
         src_text.append(comments[0]['raw_text'])
         for j in range(1, len(comments)):
             text = comments[j]['raw_text']
-            text = text.replace('\n', ' ')
+            text = _clean_text(text)
+            clear_whitespace = text.split()
+            text = ' '.join(clear_whitespace)
             split_text = custom_split(text, split_chars)
             for sent in split_text:
                 src_text.append(sent)
@@ -139,6 +142,19 @@ class BugSource():
                 self.finetune_ids[id] = True
         return product, bug_ids
 
+def _clean_text(text):
+    """Performs invalid character removal and whitespace cleanup on text."""
+    output = []
+    for char in text:
+        cp = ord(char)
+        if cp == 0 or cp == 0xfffd or _is_control(char):
+            continue
+        if _is_whitespace(char):
+            output.append(" ")
+        else:
+            output.append(char)
+    return "".join(output)
+
 def custom_split(input_string, split_chars):
     start_idx = 0
     end_idx = 0
@@ -150,12 +166,15 @@ def custom_split(input_string, split_chars):
             char_list_selection = char_list[start_idx:end_idx]
             split_string = ''.join(char_list_selection)
             split_string_list.append(split_string)
-        elif char in split_chars and char_list[idx+1] == ' ':
+        elif char in split_chars and (char_list[idx+1] == ' ' or char_list[idx+1] == '('):
             end_idx = idx
             char_list_selection = char_list[start_idx:end_idx+1]
             split_string = ''.join(char_list_selection)
             split_string_list.append(split_string)
-            start_idx = idx + 2
+            if char_list[idx+1] == ' ':
+                start_idx = idx + 2
+            elif char_list[idx+1] == '(':
+                start_idx = idx + 1
     return split_string_list
 
 def source_data(args, mozilla=False):
@@ -230,7 +249,9 @@ def get_text(idx):
     src_text.append(comments[0]['raw_text'])
     for j in range(1, len(comments)):
         text = comments[j]['raw_text']
-        text = text.replace('\n', ' ')
+        text = _clean_text(text)
+        clear_whitespace = text.split()
+        text = ' '.join(clear_whitespace)
         split_text = custom_split(text, split_chars)
         for sent in split_text:
             src_text.append(sent)
