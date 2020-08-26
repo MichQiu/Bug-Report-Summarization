@@ -31,7 +31,9 @@ if __name__ == '__main__':
     parser.add_argument("-mode", default='', type=str)
     parser.add_argument("-url", default='https://bugzilla.mozilla.org')
     parser.add_argument("-url_platform", default='https://bugs.kde.org/query.cgi?format=advanced')
+    parser.add_argument("-mozilla", default=False)
     parser.add_argument("-mozilla_products", default='../../data/mozilla_products.txt')
+    parser.add_argument("finetune_ids", default='../../prepro/bug_ids.pkl')
     parser.add_argument("-save_path", default='../../data/platform/')
 
     # nargs=? -> allows optional arguments to be provided, if option string is present but not followed by a

@@ -108,14 +108,13 @@ def data_dict_combine(dict1, dict2): #tested
     return dict1
 
 def get_bug_ids(datasets, id_save_path): #tested
-    bug_id_check = {}
+    file = open(id_save_path, 'w+')
     for data_dict in datasets:
         title = data_dict['title']
         match = re.findall(r"[(][0-9]*[)]", title)
         bug_id = int(match[0][1:-1])
-        bug_id_check[bug_id] = False
-    file = open(id_save_path, 'wb+')
-    pickle.dump(bug_id_check, file)
+        file.write(str(bug_id)+'\n')
+    file.close()
 
 '''
 special_wordfile = '/home/mich_qiu/PycharmProjects/MSc_Thesis/PreSumm_Bug/src/prepro/special_words.txt'

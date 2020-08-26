@@ -1,0 +1,4 @@
+bugzilla.mozilla.org
+bugs.eclipse.org/bugs/xmlrpc.cgi
+bugs.kde.org
+bugzilla.gnome.org
