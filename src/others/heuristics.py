@@ -3,10 +3,26 @@ import re
 import torch
 from nltk.parse import stanford
 from multiprocessing import Pool
-from pretrain.data_source import custom_split
+from others.utils import custom_split
 
 os.environ['STANFORD_PARSER'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
 os.environ['STANFORD_MODELS'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
+
+parser = stanford.StanfordParser(
+            model_path='/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars/englishPCFG.ser.gz')
+
+class Args():
+    def __init__(
+            self,
+            pretrain_data=None,
+            finetune_data=None,
+            n_cpus=10,
+            save_file=None
+    ):
+        self.pretrain_data = pretrain_data
+        self.finetune_data = finetune_data
+        self.n_cpus = n_cpus
+        self.save_file = save_file
 
 class Heuristics():
     def __init__(self, args, bug_comments=None, data_dict=None):
@@ -89,30 +105,30 @@ class Heuristics():
         code_sent_idxs = self._is_code(self.bug_comments)
         for idx in description_sent_idxs:
             tokens = self.bug_comments[idx].split()
-            tagged_tokens = ['DS'] + tokens
-            self.bug_comments[idx] = ''.join(tagged_tokens)
+            tagged_tokens = ['<DES>'] + tokens
+            self.bug_comments[idx] = ' '.join(tagged_tokens)
             tagged_idx.append(idx)
         for idx in question_sent_idxs:
             if idx in tagged_idx:
                 pass
             else:
                 tokens = self.bug_comments[idx].split()
-                tagged_tokens = ['QS'] + tokens
-                self.bug_comments[idx] = ''.join(tagged_tokens)
+                tagged_tokens = ['<QS>'] + tokens
+                self.bug_comments[idx] = ' '.join(tagged_tokens)
                 tagged_idx.append(idx)
         for idx in code_sent_idxs:
             if idx in tagged_idx:
                 pass
             else:
                 tokens = self.bug_comments[idx].split()
-                tagged_tokens = ['CO'] + tokens
-                self.bug_comments[idx] = ''.join(tagged_tokens)
+                tagged_tokens = ['<CODE>'] + tokens
+                self.bug_comments[idx] = ' '.join(tagged_tokens)
                 tagged_idx.append(idx)
         for idx in range(len(self.bug_comments)):
             if idx not in tagged_idx:
                 tokens = self.bug_comments[idx].split()
-                tagged_tokens = ['ST'] + tokens
-                self.bug_comments[idx] = ''.join(tagged_tokens)
+                tagged_tokens = ['<ST>'] + tokens
+                self.bug_comments[idx] = ' '.join(tagged_tokens)
 
     def identify_intent_ft(self):
         """Assign intentions to sentences for finetune data"""
@@ -124,40 +140,40 @@ class Heuristics():
         code_sent_idxs = self._is_code(self.data_dict['src_text'])
         for idx in description_sent_idxs:
             tokens = self.data_dict['src_text'][idx].split()
-            tagged_tokens = ['DS'] + tokens
-            self.data_dict['src_text'][idx] = ''.join(tagged_tokens)
+            tagged_tokens = ['<DES>'] + tokens
+            self.data_dict['src_text'][idx] = ' '.join(tagged_tokens)
             tagged_idx.append(idx)
         for idx in question_sent_idxs:
             if idx in tagged_idx:
                 pass
             else:
                 tokens = self.data_dict['src_text'][idx].split()
-                tagged_tokens = ['QS'] + tokens
-                self.data_dict['src_text'][idx] = ''.join(tagged_tokens)
+                tagged_tokens = ['<QS>'] + tokens
+                self.data_dict['src_text'][idx] = ' '.join(tagged_tokens)
             tagged_idx.append(idx)
         for idx in code_sent_idxs:
             if idx in tagged_idx:
                 pass
             else:
                 tokens = self.data_dict['src_text'][idx].split()
-                tagged_tokens = ['CO'] + tokens
-                self.data_dict['src_text'][idx] = ''.join(tagged_tokens)
+                tagged_tokens = ['<CODE>'] + tokens
+                self.data_dict['src_text'][idx] = ' '.join(tagged_tokens)
             tagged_idx.append(idx)
         for idx in range(len(self.data_dict['src_text'])):
             if idx not in tagged_idx:
                 tokens = self.data_dict['src_text'][idx].split()
-                tagged_tokens = ['ST'] + tokens
-                self.data_dict['src_text'][idx] = ''.join(tagged_tokens)
+                tagged_tokens = ['<ST>'] + tokens
+                self.data_dict['src_text'][idx] = ' '.join(tagged_tokens)
         for words in eval_dup_sent_idxs:
             eval_dup_sents = eval_dup_sent_idxs[words]
             for dup in eval_dup_sents:
                 tokens = self.data_dict['src_text'][dup].split()
-                tagged_tokens = ['DUP'] + tokens
+                tagged_tokens = ['<DUP>'] + tokens
                 self.data_dict['src_text'][dup] = ''.join(tagged_tokens)
                 for eval in eval_dup_sents[dup]:
                     tokens = self.data_dict['src_text'][eval].split()
-                    tagged_tokens = ['EVAL'] + tokens
-                    self.data_dict['src_text'][eval] = ''.join(tagged_tokens)
+                    tagged_tokens = ['<EVAL>'] + tokens
+                    self.data_dict['src_text'][eval] = ' '.join(tagged_tokens)
 
     def _get_comment_bounds(self): #tested
         """Get the sentence index boundaries for each comment"""
@@ -177,47 +193,57 @@ class Heuristics():
     def _is_question(self, text): #tested
         """Use CFG parsing to determine if a sentence is a question"""
         question_sent_idxs = []
-        parser = stanford.StanfordParser(
-            model_path=self.args.treebank_file)
-        sentences = parser.raw_parse_sents(tuple(text))
+        short_text = []
+        short_text_idx = []
+        for idx, sent in enumerate(text):
+            if len(sent.split()) < 50:
+                short_text_idx.append(idx)
+                short_text.append(sent)
+        sentences = parser.raw_parse_sents(tuple(short_text))
         cfg_tree_list = [list(dep_graphs) for dep_graphs in sentences]
-        for i in range(len(text)):
+        for i in range(len(short_text)):
             finish = False
-            node_list = cfg_tree_list[i][0].productions()
-            for j in range(len(node_list)):
-                if finish:
-                    continue
-                node_l = node_list[j].lhs().symbol()
-                if node_l == 'SBARQ' or node_l == 'SQ':
-                    question_sent_idxs.append(i)
-                    continue
-                node_tup = node_list[j].rhs()
-                for k in range(len(node_tup)):
-                    if not isinstance(node_tup[k], str):
-                        node_r = node_tup[k].symbol()
-                        if node_r == 'SBARQ' or node_r == 'SQ':
-                            question_sent_idxs.append(i)
-                            finish = True
-                            continue
-            if i not in question_sent_idxs:
-                char_list = list(text[i])
-                if char_list[-1] == '?':
-                    question_sent_idxs.append(i)
+            try:
+                node_list = cfg_tree_list[i][0].productions()
+                for j in range(len(node_list)):
+                    if finish:
+                        continue
+                    node_l = node_list[j].lhs().symbol()
+                    if node_l == 'SBARQ' or node_l == 'SQ':
+                        question_sent_idxs.append(short_text_idx[i])
+                        continue
+                    node_tup = node_list[j].rhs()
+                    for k in range(len(node_tup)):
+                        if not isinstance(node_tup[k], str):
+                            node_r = node_tup[k].symbol()
+                            if node_r == 'SBARQ' or node_r == 'SQ':
+                                question_sent_idxs.append(short_text_idx[i])
+                                finish = True
+                                continue
+                if short_text_idx[i] not in question_sent_idxs:
+                    char_list = list(short_text[i])
+                    if char_list[-1] == '?':
+                        question_sent_idxs.append(short_text_idx[i])
+            except:
+                continue
         return question_sent_idxs
 
     def _is_description_pr(self): #tested
         """Check if sentences are descriptions in pretraining data"""
         description_sent_idxs = []
         split_chars = ['.', '?', '!']
-        self.bug_comments[0] = self.bug_comments[0].replace('\n', ' ')
-        split_text = custom_split(self.bug_comments[0], split_chars)
-        if len(split_text) > 1:
-            self.bug_comments.pop(0)
-            self.bug_comments = split_text + self.bug_comments
-            for idx, sent in enumerate(split_text):
-                description_sent_idxs.append(idx)
+        if self.bug_comments[0] != '':
+            self.bug_comments[0] = self.bug_comments[0].replace('\n', ' ')
+            split_text = custom_split(self.bug_comments[0], split_chars)
+            if len(split_text) > 1:
+                self.bug_comments.pop(0)
+                self.bug_comments = split_text + self.bug_comments
+                for idx, sent in enumerate(split_text):
+                    description_sent_idxs.append(idx)
+            else:
+                description_sent_idxs.append(0)
         else:
-            description_sent_idxs.append(0)
+            self.bug_comments.pop(0)
         return description_sent_idxs
 
     def _is_code(self, text): #tested
@@ -238,40 +264,48 @@ class Heuristics():
                     code_sent_idxs.append(i)
         return code_sent_idxs
 
-def apply_all_data(args):
-    with open(args.data_file, 'r') as f:
-        for line in f:
-            args.bug_comments = line
-            apply_heuristics(args)
-
-def apply_heuristics(args):
+def apply_heuristics(args, finetune=False):
+    """
+    Make sure that args.datasets and args.bug_comments are set from their respective directories
+    """
     pool = Pool(args.n_cpus)
-    if args.bug_comments:
-        comment_list = list(args.bug_comments.values())
-        pool_list = [(args, comment) for comment in comment_list]
-    elif args.datasets:
-        comment_list = [bug for bug in args.datasets]
-        pool_list = [(args, comment) for comment in comment_list]
-    heuristics_dataset = []
-    for d in pool.imap(_apply_heuristics, pool_list):
-        h_bug_comments = d
-        heuristics_dataset.append(h_bug_comments)
-    pool.close()
-    pool.join()
-    torch.save(heuristics_dataset, args.save_file)
-
-def _apply_heuristics(args, data):
-    data_type = isinstance(data, list)
-    if data_type is False:
-        data_type = isinstance(data, dict)
-        assert data_type is True
-        heuristics = Heuristics(args, data_dict=data)
-        heuristics.identify_intent_ft(heuristics.data_dict['src_text'])
-        return heuristics.data_dict
+    if finetune:
+        data = torch.load(args.finetune_data)
+        comment_list = [(args, bug) for bug in data['src_text']]
+        for _ in pool.imap(_apply_heuristics_ft, comment_list, round((1 + len(comment_list))/args.n_cpus)):
+            pass
+        pool.close()
+        pool.join()
     else:
-        heuristics = Heuristics(args, bug_comments=data)
-        heuristics.identify_intent_pr(heuristics.bug_comments)
-        return heuristics.bug_comments
+        data = torch.load(args.pretrain_data)
+        comment_list = [(args, bug) for bug in data.values()]
+        for _ in pool.imap(_apply_heuristics_pr, comment_list, round((1 + len(comment_list))/args.n_cpus)):
+            pass
+        pool.close()
+        pool.join()
+
+def _apply_heuristics_ft(params):
+    args, data = params
+    data = [sent for sent in data if len(sent.split()) > 2]
+    heuristics = Heuristics(args, data_dict=data)
+    heuristics.identify_intent_ft()
+    with open(args.save_file, 'a+') as f:
+        for sent in heuristics.data_dict:
+            f.write(sent+'\n')
+        f.write(' \n')
+    return heuristics.data_dict
+
+def _apply_heuristics_pr(params):
+    args, data = params
+    data = [sent for sent in data if len(sent.split()) > 2]
+    heuristics = Heuristics(args, bug_comments=data)
+    heuristics.identify_intent_pr()
+    with open(args.save_file, 'a+') as f:
+        for sent in heuristics.bug_comments:
+            f.write(sent+'\n')
+        f.write(' \n')
+    return heuristics.bug_comments
+
 """
 def empty_pop(text):
     pop_list = []

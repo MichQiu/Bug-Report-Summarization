@@ -3,6 +3,7 @@ from __future__ import print_function
 import re
 import gc
 import time
+import pickle
 from os.path import join as pjoin
 from multiprocessing import Pool
 from copy import deepcopy
@@ -11,8 +12,9 @@ from others.logging import logger
 import urllib.request as urllib2
 import pprint
 import bugzilla
+from pretrain import bugsource, args_info
 import torch
-from others.tokenization import _is_control, _is_whitespace
+from others.utils import _clean_text, custom_split
 
 class MyHTMLParser(HTMLParser):
     ls_data = []
@@ -31,7 +33,7 @@ class MyHTMLParser(HTMLParser):
 
     def handle_data(self, data):
         if self.append_data:
-            non_space = re.search(r'[\\n]', data)
+            non_space = re.search(r'[\n]', data)
             if non_space is None:
                 self.ls_data.append(data)
 
@@ -42,191 +44,154 @@ def get_product_lists(url): #tested
     logger.info("Parsing data from %s" % url)
     parser.feed(str(html_page.read()))
     logger.info("Parsing complete")
+    parser.ls_data = parser.ls_data[1::2]
     return parser.ls_data
 
-
-class BugSource():
-
-    def __init__(self, args, product_list):
-        self.args = args
-        self.url = args.url
-        self.product_list = product_list
-        self.finetune_ids_file = open(args.finetune_ids_file, 'r')
-        self.finetune_ids = {}
-        for line in self.finetune_ids_file:
-            bug_id = line[:-1]
-            self.finetune_ids[bug_id] = False
-        self.finetune_ids_file.close()
-        self.bzapi = bugzilla.Bugzilla(self.url)
-
-    def source(self, bug_ids):
-        """
-        Obtain a dictionary that contains every product in the platform as its keys
-        Within each product, there is a dictionary of bug ids and their associated bug comments
-        :return {'product_A': {bug_id1:[src_text1], ...}, ...}
-        """
-        logger.info('Processing products...')
-        pool = Pool(self.args.n_cpus)
-        for d in pool.imap(_source, self.product_list):
-            product, bug_comments = d
-            save_file = pjoin(self.args.save_path, product+'_bert.pt')
-            logger.info('Saving to %s' % save_file)
-            torch.save(bug_comments, save_file)
-        pool.close()
-        pool.join()
-        logger.info('Processed products')
-
-    def remove_empty_products(self):
-        """Remove all product categories with 0 bug reports"""
-        logger.info("Calculating number of bugs in platform products...")
-        full_bugreport_len = self._calculate_bugs_len()
-        logger.info("Calculation complete")
-        bugreport_len = deepcopy(full_bugreport_len)
-        for product in bugreport_len:
-            if bugreport_len[product] == 0:
-                del bugreport_len[product]
-        logger.info("Removed all product categories with 0 bugs")
-        return bugreport_len
-
-    def _calculate_bugs_len(self): #tested
-        """
-        Calculate the number of bug reports in each product category
-        :return {'product1': bug_length1, ...}
-        """
-        bugreport_len = {}
-        pool = Pool(self.args.n_cpus)
-        for d in pool.imap(_get_bug_id, self.product_list):
-            product, bug_ids = d
-            bugreport_len[product] = len(bug_ids)
-        pool.close()
-        pool.join()
-        self.product_list = [product for product in list(bugreport_len.keys()) if bugreport_len[product] != 0]
-
-prod_list = get_product_lists(args.url_platform)
-prod_list = prod_list[1:3]
-bs = BugSource(args, prod_list)
-
-
-def source(n_cpus, product_list):
-    """
-    Obtain a dictionary that contains every product in the platform as its keys
-    Within each product, there is a dictionary of bug ids and their associated bug comments
-    :return {'product_A': {bug_id1:[src_text1], ...}, ...}
-    """
-    logger.info('Processing products...')
-    pool = Pool(self.args.n_cpus)
-    for d in pool.imap(_source, self.product_list):
-        product, bug_comments = d
-        save_file = pjoin(self.args.save_path, product + '_bert.pt')
-        logger.info('Saving to %s' % save_file)
-        torch.save(bug_comments, save_file)
-    pool.terminate()
-    pool.join()
-    logger.info('Processed products')
-    gc.collect()
-
-def _source(product, bug_ids):
-    """Get the bug ids from the product and extract their comments"""
-    bug_comments = {}
-    pool = Pool(8)
-    for d in pool.imap(_get_text, bug_ids, round((1+len(bug_ids))/8)):
-        bug_id, src_text = d
-        if bug_id is False and src_text is False:
-            continue
-        elif len(src_text) >= 15:
-            bug_comments[bug_id] = src_text
-    pool.close()
-    pool.join()
-    return product, bug_comments
-
-def _get_text(bug_id):
-    """Get the comments of an individual bug via its bug id"""
-    bug = bs.bzapi.getbug(bug_id)
-    comments = bug.getcomments()
-    if len(comments) > 0:
-        src_text = []
-        split_chars = ['.', '?', '!']
-        src_text.append(comments[0]['raw_text'])
-        for j in range(1, len(comments)):
-            text = comments[j]['raw_text']
-            text = _clean_text(text)
-            clear_whitespace = text.split()
-            text = ' '.join(clear_whitespace)
-            split_text = custom_split(text, split_chars)
-            for sent in split_text:
-                src_text.append(sent)
-        return bug_id, src_text
-    else:
-        return False, False
-
-def _get_bug_id(product): #tested
-    """
-    Conduct query into the bug repository based on the product category and retrieve the bug ids
-    :return [bug_id1, bug_id2, ...]
-    """
-    id_query = bs.bzapi.build_query(product=product, include_fields=['id'])
-    bug_ids = bs.bzapi.query(id_query)
-    for i in range(len(bug_ids)):
-        bug_ids[i] = bug_ids[i].id
-    _finetune_ids = list(bs.finetune_ids.items())
-    ids_notfound = [pair for pair in _finetune_ids if pair[-1] is False]
-    for id_pair in ids_notfound:
-        id = id_pair[0]
-        if id in bug_ids:
-            bug_ids.remove(id)
-            bs.finetune_ids[id] = True
-    return product, bug_ids
-
-def _clean_text(text): #tested
-    """Performs invalid character removal and whitespace cleanup on text."""
-    output = []
-    for char in text:
-        cp = ord(char)
-        if cp == 0 or cp == 0xfffd or _is_control(char):
-            continue
-        if _is_whitespace(char):
-            output.append(" ")
-        else:
-            output.append(char)
-    return "".join(output)
-
-def custom_split(input_string, split_chars): #tested
-    start_idx = 0
-    end_idx = 0
-    split_string_list = []
-    char_list = list(input_string)
-    for idx, char in enumerate(char_list):
-        if idx == (len(char_list) - 1):
-            end_idx = idx + 1
-            char_list_selection = char_list[start_idx:end_idx]
-            split_string = ''.join(char_list_selection)
-            split_string_list.append(split_string)
-        elif char in split_chars and (char_list[idx+1] == ' ' or char_list[idx+1] == '('):
-            end_idx = idx
-            char_list_selection = char_list[start_idx:end_idx+1]
-            split_string = ''.join(char_list_selection)
-            split_string_list.append(split_string)
-            if char_list[idx+1] == ' ':
-                start_idx = idx + 2
-            elif char_list[idx+1] == '(':
-                start_idx = idx + 1
-    return split_string_list
-
-def source_data(args):
+def bugsource_init(args):
+    global bug_source
     if args.mozilla:
         product_list = []
         with open(args.mozilla_products, 'r') as f:
             for line in f:
-                product_list.append(line)
+                product_list.append(line[:-1])
     else:
         product_list = get_product_lists(args.url_platform)
-    bug_source = BugSource(args, product_list)
-    bugreport_len = bug_source.remove_empty_products()
-    bug_source.product_list = list(bugreport_len.keys())
-    bug_source.source()
+    bug_source = bugsource.BugSource(args, product_list)
+
+args_list = args_info.Args()
+
+flag = True
+while flag is True:
+    for i, j in enumerate(args_list.args):
+        print(i, list(args_list.files.keys())[i])
+    platform = input("Please select the bug platform to source from by choosing its number: ")
+    print("Loading arguments...")
+    if int(platform) not in range(len(args_list.args)):
+        flag = True
+    else:
+        flag = False
+bugsource_init(args_list.args[int(platform)])
+print("Finished loading")
+
+def calculate_bugs_len(): #tested
+    """
+    Calculate the number of bug reports in each product category
+    :return {'product1': bug_length1, ...}
+    """
+    bugreport_len = {}
+    pool = Pool(10)
+    for d in pool.imap(_get_bug_id, bug_source.product_list, round((1 + len(bug_source.product_list)) / 10)):
+        product, bug_ids = d
+        if len(bug_ids) > 0:
+            bugreport_len[product] = bug_ids
+    pool.close()
+    pool.join()
+    return bugreport_len
+
+def _get_bug_id(product):  #tested
+    """
+    Conduct query into the bug repository based on the product category and retrieve the bug ids
+    :return [bug_id1, bug_id2, ...]
+    """
+    id_query = bug_source.bzapi.build_query(product=product, include_fields=['id'])
+    bug_ids = bug_source.bzapi.query(id_query)
+    for i in range(len(bug_ids)):
+        bug_ids[i] = bug_ids[i].id
+    if bug_source.no_finetune_data is False:
+        _finetune_ids = list(bug_source.finetune_ids.items())
+        ids_notfound = [pair for pair in _finetune_ids if pair[-1] is False]
+        for id_pair in ids_notfound:
+            id = id_pair[0]
+            if id in bug_ids:
+                bug_ids.remove(id)
+                bug_source.finetune_ids[id] = True
+    return product, bug_ids
+
+def _source(product, bug_ids): #tested
+    """Get the bug ids from the product and extract their comments"""
+    bug_comments = {}
+    if len(bug_ids) < 10 - 1:
+        pool = Pool(len(bug_ids))
+
+        for d in pool.imap(_get_text, bug_ids, round((1 + len(bug_ids)) / len(bug_ids))):
+            bug_id, src_text = d
+            if bug_id is False and src_text is False:
+                continue
+            elif len(src_text) >= 8:
+                bug_comments[bug_id] = src_text
+        pool.close()
+        pool.join()
+        return product, bug_comments
+    else:
+        pool = Pool(10)
+        for d in pool.imap(_get_text, bug_ids, round((1 + len(bug_ids)) / 10)):
+            bug_id, src_text = d
+            if bug_id is False and src_text is False:
+                continue
+            elif len(src_text) >= 8:
+                bug_comments[bug_id] = src_text
+        pool.close()
+        pool.join()
+        return product, bug_comments
+
+def _get_text(bug_id): #tested
+    """Get the comments of an individual bug via its bug id"""
+    try:
+        bug = bug_source.bzapi.getbug(bug_id)
+        comments = bug.getcomments()
+        if len(comments) > 0:
+            src_text = []
+            split_chars = ['.', '?', '!']
+            src_text.append(comments[0]['text'])
+            for j in range(1, len(comments)):
+                text = comments[j]['text']
+                text = _clean_text(text)
+                clear_whitespace = text.split()
+                text = ' '.join(clear_whitespace)
+                split_text = custom_split(text, split_chars)
+                for sent in split_text:
+                    src_text.append(sent)
+            return bug_id, src_text
+        else:
+            return False, False
+    except:
+        return False, False
+
+'''
+prod_list = get_product_lists(args.url_platform)
+prod_list = prod_list[1:3]
+bug_source = bugsource.BugSource(args, prod_list)
+'''
+
+def source_data():
+    bugreport_len = calculate_bugs_len()
+    char_list = ["/", "."]
+    for product in list(bugreport_len.keys()):
+        product, comments = _source(product, bugreport_len[product])
+        if len(comments) > 0:
+            product = ['_' if char in char_list else char for char in product]
+            product = ''.join(product)
+            save_file = pjoin(args_list.args[int(platform)].save_path, product + '_bert.pt')
+            torch.save(comments, save_file)
+        del product, comments
+
+blen = calculate_bugs_len()
+
+from os import listdir
+onlyfiles = [f for f in listdir('/home/mich_qiu/PycharmProjects/MSc_Thesis/data/Pretraining/kernel/')]
+files = [file[:-8] for file in onlyfiles]
+
+new_list = []
+for i in list(blen.keys()):
+    if i not in files:
+        new_list.append(i)
+
+#bug_source.product_list = new_list[2:]
 
 
 
+
+'''
 URL = 'bugzilla.mozilla.org'
 bzapi = bugzilla.Bugzilla(URL)
 
@@ -255,7 +220,7 @@ for d in pool.imap(func, [1, 2, 3, 4]):
 pool.close()
 pool.join()
 
-'''
+
 def temp():
     bugreport_len = {}
     pool = Pool(8)
@@ -267,7 +232,7 @@ def temp():
     return bugreport_len
 
 a = temp()
-'''
+
 
 t1 = time.time()
 product, bug_comments = _source(product, bug_ids)
@@ -343,4 +308,4 @@ for i in range(len(comments)):
 
 
 print("\nComments:\n%s" % pprint.pformat(comments[:]))
-
+'''
