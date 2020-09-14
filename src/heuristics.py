@@ -2,17 +2,14 @@ import os
 import re
 import torch
 import argparse
+import warnings
 from pathlib import Path
 from nltk.parse import stanford
 from multiprocessing import Pool
 from others.utils import custom_split
 from tqdm import tqdm
 
-os.environ['STANFORD_PARSER'] = './parser/Stanford_parser/stanford-parser-4.0.0/jars'
-os.environ['STANFORD_MODELS'] = './parser/Stanford_parser/stanford-parser-4.0.0/jars'
-
-parser = stanford.StanfordParser(
-            model_path='./parser/Stanford_parser/stanford-parser-4.0.0/jars/englishPCFG.ser.gz')
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 class Heuristics():
     def __init__(self, args, bug_comments=None, data_dict=None):
@@ -26,6 +23,11 @@ class Heuristics():
         self.args = args
         self.bug_comments = bug_comments
         self.data_dict = data_dict
+        os.environ['STANFORD_PARSER'] = self.args.parser_dir
+        os.environ['STANFORD_MODELS'] = self.args.parser_dir
+
+        self.parser = stanford.StanfordParser(
+            model_path=self.args.parser_file)
 
     def evaluate_sent(self, word_file): #tested
         """Get indices for evaluative and duplicate sentences"""
@@ -189,7 +191,7 @@ class Heuristics():
             if len(sent.split()) < 50:
                 short_text_idx.append(idx)
                 short_text.append(sent)
-        sentences = parser.raw_parse_sents(tuple(short_text))
+        sentences = self.parser.raw_parse_sents(tuple(short_text))
         cfg_tree_list = [list(dep_graphs) for dep_graphs in sentences]
         for i in range(len(short_text)):
             finish = False
@@ -316,6 +318,8 @@ if __name__ == '__main__':
     arg_parser.add_argument("-finetune", default=False, type=bool)
     arg_parser.add_argument("-save_file", default='', type=str)
     arg_parser.add_argument("-n_cpus", default=10, type=int)
+    arg_parser.add_argument("-parser_dir", default='', type=str)
+    arg_parser.add_argument("-parser_file", default='', type=str)
 
     args = arg_parser.parse_args()
     apply_full(args)
