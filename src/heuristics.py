@@ -1,28 +1,18 @@
 import os
 import re
 import torch
+import argparse
+from pathlib import Path
 from nltk.parse import stanford
 from multiprocessing import Pool
 from others.utils import custom_split
+from tqdm import tqdm
 
-os.environ['STANFORD_PARSER'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
-os.environ['STANFORD_MODELS'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
+os.environ['STANFORD_PARSER'] = './parser/Standford_parser/stanford-parser-4.0.0/jars'
+os.environ['STANFORD_MODELS'] = './parser/Standford_parser/stanford-parser-4.0.0/jars'
 
 parser = stanford.StanfordParser(
-            model_path='/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars/englishPCFG.ser.gz')
-
-class Args():
-    def __init__(
-            self,
-            pretrain_data=None,
-            finetune_data=None,
-            n_cpus=10,
-            save_file=None
-    ):
-        self.pretrain_data = pretrain_data
-        self.finetune_data = finetune_data
-        self.n_cpus = n_cpus
-        self.save_file = save_file
+            model_path='./parser/Standford_parser/stanford-parser-4.0.0/jars/englishPCFG.ser.gz')
 
 class Heuristics():
     def __init__(self, args, bug_comments=None, data_dict=None):
@@ -105,7 +95,7 @@ class Heuristics():
         code_sent_idxs = self._is_code(self.bug_comments)
         for idx in description_sent_idxs:
             tokens = self.bug_comments[idx].split()
-            tagged_tokens = ['<DES>'] + tokens
+            tagged_tokens = ['[DES]'] + tokens
             self.bug_comments[idx] = ' '.join(tagged_tokens)
             tagged_idx.append(idx)
         for idx in question_sent_idxs:
@@ -113,7 +103,7 @@ class Heuristics():
                 pass
             else:
                 tokens = self.bug_comments[idx].split()
-                tagged_tokens = ['<QS>'] + tokens
+                tagged_tokens = ['[QS]'] + tokens
                 self.bug_comments[idx] = ' '.join(tagged_tokens)
                 tagged_idx.append(idx)
         for idx in code_sent_idxs:
@@ -121,13 +111,13 @@ class Heuristics():
                 pass
             else:
                 tokens = self.bug_comments[idx].split()
-                tagged_tokens = ['<CODE>'] + tokens
+                tagged_tokens = ['[CODE]'] + tokens
                 self.bug_comments[idx] = ' '.join(tagged_tokens)
                 tagged_idx.append(idx)
         for idx in range(len(self.bug_comments)):
             if idx not in tagged_idx:
                 tokens = self.bug_comments[idx].split()
-                tagged_tokens = ['<ST>'] + tokens
+                tagged_tokens = ['[ST]'] + tokens
                 self.bug_comments[idx] = ' '.join(tagged_tokens)
 
     def identify_intent_ft(self):
@@ -140,7 +130,7 @@ class Heuristics():
         code_sent_idxs = self._is_code(self.data_dict['src_text'])
         for idx in description_sent_idxs:
             tokens = self.data_dict['src_text'][idx].split()
-            tagged_tokens = ['<DES>'] + tokens
+            tagged_tokens = ['[DES]'] + tokens
             self.data_dict['src_text'][idx] = ' '.join(tagged_tokens)
             tagged_idx.append(idx)
         for idx in question_sent_idxs:
@@ -148,7 +138,7 @@ class Heuristics():
                 pass
             else:
                 tokens = self.data_dict['src_text'][idx].split()
-                tagged_tokens = ['<QS>'] + tokens
+                tagged_tokens = ['[QS]'] + tokens
                 self.data_dict['src_text'][idx] = ' '.join(tagged_tokens)
             tagged_idx.append(idx)
         for idx in code_sent_idxs:
@@ -156,23 +146,23 @@ class Heuristics():
                 pass
             else:
                 tokens = self.data_dict['src_text'][idx].split()
-                tagged_tokens = ['<CODE>'] + tokens
+                tagged_tokens = ['[CODE]'] + tokens
                 self.data_dict['src_text'][idx] = ' '.join(tagged_tokens)
             tagged_idx.append(idx)
         for idx in range(len(self.data_dict['src_text'])):
             if idx not in tagged_idx:
                 tokens = self.data_dict['src_text'][idx].split()
-                tagged_tokens = ['<ST>'] + tokens
+                tagged_tokens = ['[ST]'] + tokens
                 self.data_dict['src_text'][idx] = ' '.join(tagged_tokens)
         for words in eval_dup_sent_idxs:
             eval_dup_sents = eval_dup_sent_idxs[words]
             for dup in eval_dup_sents:
                 tokens = self.data_dict['src_text'][dup].split()
-                tagged_tokens = ['<DUP>'] + tokens
+                tagged_tokens = ['[DUP]'] + tokens
                 self.data_dict['src_text'][dup] = ''.join(tagged_tokens)
                 for eval in eval_dup_sents[dup]:
                     tokens = self.data_dict['src_text'][eval].split()
-                    tagged_tokens = ['<EVAL>'] + tokens
+                    tagged_tokens = ['[EVAL]'] + tokens
                     self.data_dict['src_text'][eval] = ' '.join(tagged_tokens)
 
     def _get_comment_bounds(self): #tested
@@ -264,22 +254,36 @@ class Heuristics():
                     code_sent_idxs.append(i)
         return code_sent_idxs
 
-def apply_heuristics(args, finetune=False):
+def apply_full(args):
+    path = Path(args.data_dir)
+    files = list(path.glob('**/*.pt'))
+    for file in tqdm(files):
+        apply_heuristics(file, args)
+
+def apply_heuristics(src_data, args):
     """
     Make sure that args.datasets and args.bug_comments are set from their respective directories
     """
     pool = Pool(args.n_cpus)
-    if finetune:
-        data = torch.load(args.finetune_data)
+    if args.finetune:
+        data = torch.load(src_data)
         comment_list = [(args, bug) for bug in data['src_text']]
-        for _ in pool.imap(_apply_heuristics_ft, comment_list, round((1 + len(comment_list))/args.n_cpus)):
+        if len(comment_list) < args.n_cpus:
+            chunksize = 1
+        else:
+            chunksize = round((1 + len(comment_list))/args.n_cpus)
+        for _ in pool.imap(_apply_heuristics_ft, comment_list, chunksize):
             pass
         pool.close()
         pool.join()
     else:
-        data = torch.load(args.pretrain_data)
+        data = torch.load(src_data)
         comment_list = [(args, bug) for bug in data.values()]
-        for _ in pool.imap(_apply_heuristics_pr, comment_list, round((1 + len(comment_list))/args.n_cpus)):
+        if len(comment_list) < args.n_cpus:
+            chunksize = 1
+        else:
+            chunksize = round((1 + len(comment_list))/args.n_cpus)
+        for _ in pool.imap(_apply_heuristics_pr, comment_list, chunksize):
             pass
         pool.close()
         pool.join()
@@ -306,22 +310,12 @@ def _apply_heuristics_pr(params):
         f.write(' \n')
     return heuristics.bug_comments
 
-"""
-def empty_pop(text):
-    pop_list = []
-    for i in range(len(text)):
-        if len(text[i]) == 0:
-            text.pop(i)
+if __name__ == '__main__':
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("-data_dir", default='', type=str)
+    arg_parser.add_argument("-finetune", default=False, type=bool)
+    arg_parser.add_argument("-save_file", default='', type=str)
+    arg_parser.add_argument("-n_cpus", default=10, type=int)
 
-def get_code_sent(text, idx_list):
-    for i in idx_list:
-        print(text[i])
-
-a, b = get_text(2)
-empty_pop(b)
-checking_2(b)
-
-def checking_2(text):
-    c = _is_code(text)
-    get_code_sent(text, c)
-"""
+    args = arg_parser.parse_args()
+    apply_full(args)

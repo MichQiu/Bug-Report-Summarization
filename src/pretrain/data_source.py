@@ -1,16 +1,11 @@
 from __future__ import print_function
 
 import re
-import gc
-import time
-import pickle
 from os.path import join as pjoin
 from multiprocessing import Pool
-from copy import deepcopy
 from html.parser import HTMLParser
 from others.logging import logger
 import urllib.request as urllib2
-import pprint
 import bugzilla
 from pretrain import bugsource, args_info
 import torch
