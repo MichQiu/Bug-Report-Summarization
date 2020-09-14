@@ -8,11 +8,11 @@ from multiprocessing import Pool
 from others.utils import custom_split
 from tqdm import tqdm
 
-os.environ['STANFORD_PARSER'] = './parser/Standford_parser/stanford-parser-4.0.0/jars'
-os.environ['STANFORD_MODELS'] = './parser/Standford_parser/stanford-parser-4.0.0/jars'
+os.environ['STANFORD_PARSER'] = './parser/Stanford_parser/stanford-parser-4.0.0/jars'
+os.environ['STANFORD_MODELS'] = './parser/Stanford_parser/stanford-parser-4.0.0/jars'
 
 parser = stanford.StanfordParser(
-            model_path='./parser/Standford_parser/stanford-parser-4.0.0/jars/englishPCFG.ser.gz')
+            model_path='./parser/Stanford_parser/stanford-parser-4.0.0/jars/englishPCFG.ser.gz')
 
 class Heuristics():
     def __init__(self, args, bug_comments=None, data_dict=None):
