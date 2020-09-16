@@ -193,19 +193,34 @@ class BertData():
         if ((not is_test) and len(src) < self.args.min_src_nsents):
             return None
 
-        sent_labels = []
+        sent_labels = [] # list for extractive summary sentence labels and order
+        ext_text_lst = []
         for key in ext_keys:
             data_dict[key + '_labels'] = deepcopy(sent_id)
+            data_dict[key + '_pos'] = deepcopy(data_dict[key])
             for j in range(len(data_dict[key])):
                 data_dict[key][j]['ID'] = data_dict[key][j]['ID'].strip()
 
             # note that the order of sentence labels are not equal to summary, need to adjust later
+            '''
             for k in range(len(sent_id)):
                 if data_dict[key + '_labels'][k] in data_dict[key]:
-                    data_dict[key + '_labels'][k] = 1
+                    data_dict[key + '_labels'][k] = (data_dict[key + '_labels'][k], 1)
                 else:
-                    data_dict[key + '_labels'][k] = 0
+                    data_dict[key + '_labels'][k] = (data_dict[key + '_labels'][k], 0)
+            '''
+            for ext_idx, ext_sent in enumerate(data_dict[key]):
+                for idx, sent in enumerate(sent_id):
+                    if ext_sent == sent:
+                        # (sentence id, sentence label, sentence order)
+                        data_dict[key + '_labels'][idx] = (data_dict[key + '_labels'][idx], 1, ext_idx)
+                        # (sentence id, sentence position in src)
+                        data_dict[key + '_pos'][ext_idx] = (data_dict[key + '_pos'][ext_idx], idx)
+                    else:
+                        data_dict[key + '_labels'][idx] = (data_dict[key + '_labels'][idx], 0, None)
             sent_labels.append(data_dict[key + '_labels'])
+            ext_text_lst.append(data_dict[key + '_pos'])
+
 
         src_text = [' '.join(sent) for sent in src]
         text = ' {} {} '.format(self.sep_token, self.cls_token).join(src_text)
@@ -245,7 +260,7 @@ class BertData():
             tgt_subtokens_idxs_lst.append(tgt_subtoken_idxs)
             tgt_text_lst.append(tgt_text)
 
-        return src_subtoken_idxs, sent_labels, tgt_subtokens_idxs_lst, segments_ids, cls_ids, src_text, tgt_text_lst
+        return src_subtoken_idxs, sent_labels, tgt_subtokens_idxs_lst, segments_ids, cls_ids, src_text, tgt_text_lst, ext_text_lst
 
 
 def format_to_bert(args):
@@ -297,11 +312,11 @@ def _format_to_bert(params):
             if key in ext_keys_lst:
                 ext_keys.append(key)
         bert_data = bert.preprocess(report, tgt_keys, ext_keys, use_bert_basic_tokenizer=args.use_bert_basic_tokenizer)
-        src_subtoken_idxs, sent_labels, tgt_subtokens_idxs_lst, segments_ids, cls_ids, src_text, tgt_text_lst = bert_data
+        src_subtoken_idxs, sent_labels, tgt_subtokens_idxs_lst, segments_ids, cls_ids, src_text, tgt_text_lst, ext_text_lst = bert_data
 
         bert_data_dict = {"src": src_subtoken_idxs, "tgt": tgt_subtokens_idxs_lst,
                           "src_sent_labels": sent_labels, "segs": segments_ids, 'clss': cls_ids,
-                          'src_text': src_text, "tgt_text_lst": tgt_text_lst}
+                          'src_text': src_text, "tgt_text_lst": tgt_text_lst, "ext_text_lst": ext_text_lst}
         datasets.append(bert_data_dict)
     logger.info('Processed instances %d' % len(datasets))
     logger.info('Saving to %s' % save_file)

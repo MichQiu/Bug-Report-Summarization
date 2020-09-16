@@ -7,6 +7,7 @@ import torch
 from os import listdir
 from os.path import join as pjoin
 from copy import deepcopy
+from collections import Counter
 from others import pyrouge
 from others.tokenization import _is_control, _is_whitespace
 
@@ -275,6 +276,17 @@ def write_to_text(data_dir, save_file):
                 for sent in data[bug]:
                     f.write(sent + '\n')
                 f.write(' \n')
+
+def get_distribution(data):
+    distribution_data = []
+    for bug in data:
+        bug_intent_stat = []
+        for ext_sum in bug['ext_text_lst']:
+            intent_lst = [bug['src_text'][sent[1]] for sent in ext_sum]
+            intent_counter = Counter(intent_lst)
+            bug_intent_stat.append((intent_counter, len(list(intent_counter.elements()))))
+        distribution_data.append(bug_intent_stat)
+
 
 
 
