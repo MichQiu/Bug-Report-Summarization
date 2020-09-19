@@ -277,6 +277,11 @@ def write_to_text(data_dir, save_file):
                     f.write(sent + '\n')
                 f.write(' \n')
 
+def convert_file_format(data_dir):
+    files = [file for file in listdir(data_dir)]
+    for file in files:
+        os.rename(data_dir + file, data_dir + file + '.txt')
+
 def get_distribution(data):
     distribution_data = []
     for bug in data:
