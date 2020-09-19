@@ -1,9 +1,16 @@
 import os
 import re
+import pickle
 import torch
+import stanza
+import spacy
 import argparse
 import warnings
+import en_core_web_lg
 from pathlib import Path
+from spacy.matcher import Matcher
+from spacy.tokenizer import Tokenizer
+from spacy.lang.en import English
 from nltk.parse import stanford
 from multiprocessing import Pool
 from others.utils import custom_split
@@ -23,6 +30,7 @@ class Heuristics():
         self.args = args
         self.bug_comments = bug_comments
         self.data_dict = data_dict
+        self.pipeline = stanza.Pipeline(lang='en', processors='tokenize,mwt,pos')
         os.environ['STANFORD_PARSER'] = self.args.parser_dir
         os.environ['STANFORD_MODELS'] = self.args.parser_dir
 
@@ -95,6 +103,7 @@ class Heuristics():
         description_sent_idxs = self._is_description_pr()
         question_sent_idxs = self._is_question(self.bug_comments)
         code_sent_idxs = self._is_code(self.bug_comments)
+        info_sent_idxs = self._is_statement(self.bug_comments, self.args.info_h, "Info")
         for idx in description_sent_idxs:
             tokens = self.bug_comments[idx].split()
             tagged_tokens = ['[DES]'] + tokens
@@ -116,6 +125,7 @@ class Heuristics():
                 tagged_tokens = ['[CODE]'] + tokens
                 self.bug_comments[idx] = ' '.join(tagged_tokens)
                 tagged_idx.append(idx)
+
         for idx in range(len(self.bug_comments)):
             if idx not in tagged_idx:
                 tokens = self.bug_comments[idx].split()
@@ -255,6 +265,85 @@ class Heuristics():
                 if code_percentage > 0.5:
                     code_sent_idxs.append(i)
         return code_sent_idxs
+
+    def _is_statement(self, text, heuristics_file, sent_type):
+        statement_sent_idxs = []
+        nlp = spacy.load("en_core_web_lg")
+        matcher = Matcher(nlp.vocab)
+        with open(heuristics_file, 'rb') as f:
+            heur_list = pickle.load(f)
+            for heur in heur_list:
+                pattern = heur
+                matcher.add(sent_type, pattern)
+            for i in range(len(text)):
+                doc = nlp(i)
+                matches = matcher(doc)
+                if matches:
+                    statement_sent_idxs.append(i)
+        return statement_sent_idxs
+
+    '''
+    def _is_statement(self, text): #tested
+        """Check if sentences are statements"""
+        statement_sent_idxs = []
+        with open(self.args.heuristics, 'r') as f:
+            for line in f:
+                sent = line.split()
+                for i in range(len(text)):
+                    check = self.compare(sent, text[i])
+                    if check:
+                        statement_sent_idxs.append(i)
+        return statement_sent_idxs
+    '''
+
+    def compare(self, heur_text, text_sent): #tested
+        """Comparing sentences between heuristics and target and counting the number of matches"""
+        text_sent = text_sent.split()
+        if len(text_sent) < len(heur_text):
+            return False
+        tags = {"[something]": ('NOUN', 'PRON', 'PROPN'), "[someone]": ('NOUN', 'PRON', 'PROPN'),
+                "[verb]": ('VERB'), "[link]": ('SYM'), "[date]": ('NUM')}
+        no_of_match = 0
+        pattern = []
+        for i in range(len(heur_text)):
+            _word = heur_text[i]
+            if _word in tags:
+                _pos_tags = tags[_word]
+                pattern.append(('POS', _pos_tags))
+            else:
+                pattern.append(('WORD', _word))
+        for j in range(len(text_sent)):
+            if (len(text_sent) - j) < len(pattern):
+                break
+            else:
+                t_pattern = text_sent[j:j + len(pattern)]
+                for k in range(len(pattern)):
+                    if pattern[k][0] == 'POS':
+                        pos_tag = self._POS(t_pattern[k])
+                        if pos_tag in pattern[k][1]:
+                            no_of_match += 1
+                            continue
+                        else:
+                            no_of_match = 0
+                            break
+                    elif pattern[k][0] == 'WORD':
+                        word = t_pattern[k]
+                        if word == pattern[k][1] or word.lower() == pattern[k][1]:
+                            no_of_match += 1
+                            continue
+                        else:
+                            no_of_match = 0
+                            break
+                if no_of_match == len(heur_text):
+                    return True
+        return False
+
+    def _POS(self, word): #tested
+        """Obtain the POS tag of a word"""
+        word_POS = self.pipeline(word)
+        word_POS_dict = word_POS.to_dict()
+        pos_tag = word_POS_dict[0][0]['upos']
+        return pos_tag
 
 def apply_full(args):
     path = Path(args.data_dir)
