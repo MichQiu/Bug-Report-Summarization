@@ -248,6 +248,14 @@ def getsize(data):
         size = len(data.encode('utf8'))
     return size
 
+def batch_data(data_dir, save_file):
+    files = [file for file in listdir(data_dir)]
+    full_data = {}
+    for file in files:
+        data = torch.load(data_dir + file)
+        full_data.update(data)
+    torch.save(full_data, save_file)
+
 def split_first_comment(text):
     if len(text[0].split()) == 0:
         text.pop(0)
