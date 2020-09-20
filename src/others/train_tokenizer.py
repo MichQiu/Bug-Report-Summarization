@@ -15,6 +15,6 @@ tokenizer.train(files=paths, vocab_size=50000, special_tokens=[
             "[DES]",
             "[QS]",
             "[CODE]",
-            "[INFO]",
-            "[SOLU]"])
+            "[ST]",
+            "[NON]"])
 tokenizer.save_model('/home/mich_qiu/PycharmProjects/MSc_Thesis/data/Pretraining/', "Bugzilla_tokenizer")

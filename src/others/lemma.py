@@ -1,11 +1,8 @@
 import pickle
 import spacy
 from copy import deepcopy
-from spacy.lemmatizer import Lemmatizer
 
 nlp = spacy.load("en_core_web_lg")
-lookups = nlp.vocab.lookups
-lemmatizer = Lemmatizer(lookups)
 
 with open("/home/mich_qiu/PycharmProjects/MSc_Thesis/Bug-Report-Summarization/src/others/h_solution.txt", 'r') as f:
     sent_idx = 1
@@ -24,41 +21,41 @@ with open("/home/mich_qiu/PycharmProjects/MSc_Thesis/Bug-Report-Summarization/sr
                 if token.pos_ == pos:
                     pos_other = deepcopy(pos_lst)
                     pos_other.pop(idx)
-                    heur_sent.append({"POS": token.pos_, "OP": "+"})
-                    heur_sent2.append({"POS": pos_other[0], "OP": "+"})
-                    heur_sent3.append({"POS": pos_other[-1], "OP": "+"})
+                    heur_sent.append({"POS": token.pos_})
+                    heur_sent2.append({"POS": pos_other[0]})
+                    heur_sent3.append({"POS": pos_other[-1]})
             if heur_sent2:
                 if token.text == "verb":
-                    heur_sent.append({"POS": "VERB", "OP": "+"})
-                    heur_sent2.append({"POS": "VERB", "OP": "+"})
-                    heur_sent3.append({"POS": "VERB", "OP": "+"})
+                    heur_sent.append({"POS": "VERB"})
+                    heur_sent2.append({"POS": "VERB"})
+                    heur_sent3.append({"POS": "VERB"})
                 elif token.text == "modal":
-                    heur_sent.append({"POS": "AUX", "OP": "+"})
-                    heur_sent2.append({"POS": "AUX", "OP": "+"})
-                    heur_sent3.append({"POS": "AUX", "OP": "+"})
+                    heur_sent.append({"POS": "AUX"})
+                    heur_sent2.append({"POS": "AUX"})
+                    heur_sent3.append({"POS": "AUX"})
                 elif token.text == "link":
-                    heur_sent.append({"POS": "X", "OP": "+"})
-                    heur_sent2.append({"POS": "X", "OP": "+"})
-                    heur_sent3.append({"POS": "X", "OP": "+"})
+                    heur_sent.append({"POS": "X"})
+                    heur_sent2.append({"POS": "X"})
+                    heur_sent3.append({"POS": "X"})
                 elif token.text == "date":
-                    heur_sent.append({"POS": "NUM", "OP": "+"})
-                    heur_sent2.append({"POS": "NUM", "OP": "+"})
-                    heur_sent3.append({"POS": "NUM", "OP": "+"})
+                    heur_sent.append({"POS": "NUM"})
+                    heur_sent2.append({"POS": "NUM"})
+                    heur_sent3.append({"POS": "NUM"})
                 elif token.pos_ not in pos_lst:
-                    heur_sent.append({"LEMMA": token.lemma_, "POS": token.pos_, "OP": "+"})
-                    heur_sent2.append({"LEMMA": token.lemma_, "POS": token.pos_, "OP": "+"})
-                    heur_sent3.append({"LEMMA": token.lemma_, "POS": token.pos_, "OP": "+"})
+                    heur_sent.append({"LEMMA": token.lemma_, "POS": token.pos_})
+                    heur_sent2.append({"LEMMA": token.lemma_, "POS": token.pos_})
+                    heur_sent3.append({"LEMMA": token.lemma_, "POS": token.pos_})
             else:
                 if token.text == "verb":
-                    heur_sent.append({"POS": "VERB", "OP": "+"})
+                    heur_sent.append({"POS": "VERB"})
                 elif token.text == "modal":
-                    heur_sent.append({"POS": "AUX", "OP": "+"})
+                    heur_sent.append({"POS": "AUX"})
                 elif token.text == "link":
-                    heur_sent.append({"POS": "X", "OP": "+"})
+                    heur_sent.append({"POS": "X"})
                 elif token.text == "date":
-                    heur_sent.append({"POS": "NUM", "OP": "+"})
+                    heur_sent.append({"POS": "NUM"})
                 elif token.pos_ not in pos_lst:
-                    heur_sent.append({"LEMMA": token.lemma_, "POS": token.pos_, "OP": "+"})
+                    heur_sent.append({"LEMMA": token.lemma_, "POS": token.pos_})
         if heur_sent2:
             heur_list.extend([heur_sent, heur_sent2, heur_sent3])
         else:

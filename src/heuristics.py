@@ -99,8 +99,7 @@ class Heuristics():
         description_sent_idxs = self._is_description_pr()
         question_sent_idxs = self._is_question(self.bug_comments)
         code_sent_idxs = self._is_code(self.bug_comments)
-        info_sent_idxs = self._is_statement(self.bug_comments, self.args.info_h, "Info")
-        solution_sent_idxs = self._is_statement(self.bug_comments, self.args.solution_h, "Solution")
+        statement_sent_idxs = self._is_statement(self.bug_comments, self.args.solution_h, "statement")
         for idx in description_sent_idxs:
             tokens = self.bug_comments[idx].split()
             tagged_tokens = ['[DES]'] + tokens
@@ -122,26 +121,18 @@ class Heuristics():
                 tagged_tokens = ['[CODE]'] + tokens
                 self.bug_comments[idx] = ' '.join(tagged_tokens)
                 tagged_idx.append(idx)
-        for idx in info_sent_idxs:
+        for idx in statement_sent_idxs:
             if idx in tagged_idx:
                 pass
             else:
                 tokens = self.bug_comments[idx].split()
-                tagged_tokens = ['[INFO]'] + tokens
-                self.bug_comments[idx] = ' '.join(tagged_tokens)
-                tagged_idx.append(idx)
-        for idx in solution_sent_idxs:
-            if idx in tagged_idx:
-                pass
-            else:
-                tokens = self.bug_comments[idx].split()
-                tagged_tokens = ['[SOLU]'] + tokens
+                tagged_tokens = ['[ST]'] + tokens
                 self.bug_comments[idx] = ' '.join(tagged_tokens)
                 tagged_idx.append(idx)
         for idx in range(len(self.bug_comments)):
             if idx not in tagged_idx:
                 tokens = self.bug_comments[idx].split()
-                tagged_tokens = ['[ST]'] + tokens
+                tagged_tokens = ['[NON]'] + tokens
                 self.bug_comments[idx] = ' '.join(tagged_tokens)
 
     def identify_intent_ft(self):
