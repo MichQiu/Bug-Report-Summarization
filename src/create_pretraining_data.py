@@ -335,6 +335,7 @@ def create_masked_lm_predictions(tokens, masked_lm_prob,
             break
         if len(masked_lms) + len(index_set) > num_to_predict:
             continue
+        is_any_index_covered = False
         for index in index_set:
             if index in covered_indexes:
                 is_any_index_covered = True
