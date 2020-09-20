@@ -2,13 +2,19 @@
 Have you installed [something]?
 Have you tried [something]?
 I [verb] [something] to fix [something]
-[something] would be a good idea/thing
-[something] can/could use [something]
-[someone] was thinking/planning of adding [something]
+[something] would be a good idea
+[something] would be a good thing
+[something] can use [something]
+[something] could use [something]
+[someone] was thinking of adding [something]
+[someone] was planning of adding [something]
 [something] can be fixed by [something]
 I will try [verb]
 [someone] thinks the reason is [something]
-[something] should/could/can/must solve [something]
+[something] should solve [something]
+[something] could solve [something]
+[something] can solve [something]
+[something] must solve [something]
 [someone] believes you must [verb]
 A new [something] can be made
 Why don't use [something]
@@ -61,6 +67,70 @@ You just do not [verb]
 [something] should hold [something]
 [someone] should work on [something]
 [someone] could work on [something]
+Please adjust [something]
+Please use [something]
+We are planning to [verb]
+Session where this fits is [something]
+[someone] makes changes to [something]
+[something] is in a working state
+New changes include [something]
+[something] available
+see below
+see above
+Take a look at [something]
+[someone] would [verb] to offer help
+I am interested to contribute to [something]
+The source code for [something] is at:
+We have setups for [something]
+plan is [something]
+idea is [something]
+aim is [something]
+I recommend [something]
+[someone] will check [something]
+Make [something] like [something]
+[something] provides [something]
+[something] supports [something]
+There are efforts to [something]
+There are efforts for [something]
+solution works
+[someone] writes code to [verb]
+[someone] creates [something]
+[something] is removed
+I submit [something]
+[someone] is looking to [verb]
+[something] can be found [somewhere]
+Here is [something]
+[something] has been fixed
+See [link]
+I am [modal] to help
+I am [modal] to offer
+[someone] is working on [something]
+See [something] at [link]
+look at [link]
+Please note [something]
+Please [verb]
+[someone] expects [something]
+[someone] posts [something]
+[someone] updates [something]
+[something] will [verb] on [date]
+[someone] announces [something]
+[someone] wants to contribute
+[someone] wants to participate
+[someone] likes to contribute
+[someone] likes to participate
+[something] added
+Do not [verb]
+[someone] intends to [verb]
+[someone] made [something]
+[something] uses [something]
+[do something] by using [something]
+[something] is used
+[something] works 
+[do something] to use [something]
+[something] is instance
+[something] has been modified
+[something] can be added
+[something] can be applied
 Please adjust [something]
 Please use [something]
 We are planning to [verb]
