@@ -4,3 +4,7 @@ botocore
 nltk
 spacy
 tqdm
+torch
+pyrouge
+transformers
+tokenizers

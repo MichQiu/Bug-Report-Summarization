@@ -198,39 +198,24 @@ class Heuristics():
     def _is_question(self, text): #tested
         """Use CFG parsing to determine if a sentence is a question"""
         question_sent_idxs = []
-        short_text = []
-        short_text_idx = []
+        question_label_list = ["SBARQ", "SQ"]
         for idx, sent in enumerate(text):
-            if len(sent.split()) < 50:
-                short_text_idx.append(idx)
-                short_text.append(sent)
-        sentences = self.parser.raw_parse_sents(tuple(short_text))
-        cfg_tree_list = [list(dep_graphs) for dep_graphs in sentences]
-        for i in range(len(short_text)):
-            finish = False
-            try:
-                node_list = cfg_tree_list[i][0].productions()
-                for j in range(len(node_list)):
-                    if finish:
-                        continue
-                    node_l = node_list[j].lhs().symbol()
-                    if node_l == 'SBARQ' or node_l == 'SQ':
-                        question_sent_idxs.append(short_text_idx[i])
-                        continue
-                    node_tup = node_list[j].rhs()
-                    for k in range(len(node_tup)):
-                        if not isinstance(node_tup[k], str):
-                            node_r = node_tup[k].symbol()
-                            if node_r == 'SBARQ' or node_r == 'SQ':
-                                question_sent_idxs.append(short_text_idx[i])
-                                finish = True
-                                continue
-                if short_text_idx[i] not in question_sent_idxs:
-                    char_list = list(short_text[i])
-                    if char_list[-1] == '?':
-                        question_sent_idxs.append(short_text_idx[i])
-            except:
+            if len(sent.split()) > 128:
                 continue
+            elif "?" not in sent:
+                continue
+            else:
+                tree = self.parser.raw_parse(sent)
+                for tr in tree:
+                    tree_str = str(tr)
+                    break
+                for label in question_label_list:
+                    if label in tree_str:
+                        question_sent_idxs.append(idx)
+                        break
+                    elif sent[-1] == "?":
+                        question_sent_idxs.append(idx)
+                        break
         return question_sent_idxs
 
     def _is_description_pr(self): #tested
