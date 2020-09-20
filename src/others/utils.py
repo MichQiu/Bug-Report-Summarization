@@ -251,9 +251,12 @@ def getsize(data):
 def batch_data(data_dir, save_file):
     files = [file for file in listdir(data_dir)]
     full_data = {}
+    current_pos = len(full_data)
     for file in files:
         data = torch.load(data_dir + file)
-        full_data.update(data)
+        for data_idx, item in enumerate(list(data.items())):
+            full_data[data_idx + current_pos] = item[-1]
+        current_pos += len(data)
     torch.save(full_data, save_file)
 
 def split_first_comment(text):
