@@ -1,66 +1,51 @@
-import pickle
 import spacy
-from copy import deepcopy
 
 nlp = spacy.load("en_core_web_lg")
 
-with open("/home/mich_qiu/PycharmProjects/MSc_Thesis/Bug-Report-Summarization/src/others/h_info_give.txt", 'r') as f:
-    sent_idx = 1
-    heur_list = []
-    pos_lst = ["NOUN", "PRON", "PROPN"]
+with open("/home/mich_qiu/PycharmProjects/MSc_Thesis/Bug-Report-Summarization/src/others/h_solution.txt", 'r') as f:
+    new_sents = []
     for line in f:
         doc = nlp(line)
-        heur_sent = []
-        heur_sent2 = []
-        heur_sent3 = []
-        #print("Sentence {}".format(sent_idx))
+        pos_noun_idx = []
+        pos_noun_idx2 = []
+        count = 0
         for token in doc:
-            if token.pos_ == "PUNCT" or token.text == '\n':
-                continue
-            for idx, pos in enumerate(pos_lst):
-                if token.pos_ == pos:
-                    pos_other = deepcopy(pos_lst)
-                    pos_other.pop(idx)
-                    heur_sent.append({"POS": token.pos_})
-                    heur_sent2.append({"POS": pos_other[0]})
-                    heur_sent3.append({"POS": pos_other[-1]})
-            if heur_sent2:
-                if token.text == "verb":
-                    heur_sent.append({"POS": "VERB"})
-                    heur_sent2.append({"POS": "VERB"})
-                    heur_sent3.append({"POS": "VERB"})
-                elif token.text == "modal":
-                    heur_sent.append({"POS": "AUX"})
-                    heur_sent2.append({"POS": "AUX"})
-                    heur_sent3.append({"POS": "AUX"})
-                elif token.text == "link":
-                    heur_sent.append({"POS": "X"})
-                    heur_sent2.append({"POS": "X"})
-                    heur_sent3.append({"POS": "X"})
-                elif token.text == "date":
-                    heur_sent.append({"POS": "NUM"})
-                    heur_sent2.append({"POS": "NUM"})
-                    heur_sent3.append({"POS": "NUM"})
-                elif token.pos_ not in pos_lst:
-                    heur_sent.append({"LEMMA": token.lemma_})
-                    heur_sent2.append({"LEMMA": token.lemma_})
-                    heur_sent3.append({"LEMMA": token.lemma_})
+            if token.pos_ == "NOUN":
+                pos_noun_idx.append("someone")
+                pos_noun_idx2.append("john")
+                count += 1
+            elif token.pos_ == "PRON":
+                pos_noun_idx.append("cat")
+                pos_noun_idx2.append("john")
+                count += 1
+            elif token.pos_ == "PROPN":
+                pos_noun_idx.append("someone")
+                pos_noun_idx2.append("cat")
+                count += 1
+            elif token.text == "verb":
+                pos_noun_idx.append("run")
+                pos_noun_idx2.append("run")
+            elif token.text == "link":
+                pos_noun_idx.append("http://www.github.com")
+                pos_noun_idx2.append("http://www.github.com")
+            elif token.text == "date":
+                pos_noun_idx.append("21/09/2020")
+                pos_noun_idx2.append("21/09/2020")
+            elif token.text == "modal":
+                pos_noun_idx.append("should")
+                pos_noun_idx2.append("should")
             else:
-                if token.text == "verb":
-                    heur_sent.append({"POS": "VERB"})
-                elif token.text == "modal":
-                    heur_sent.append({"POS": "AUX"})
-                elif token.text == "link":
-                    heur_sent.append({"POS": "X"})
-                elif token.text == "date":
-                    heur_sent.append({"POS": "NUM"})
-                elif token.pos_ not in pos_lst:
-                    heur_sent.append({"LEMMA": token.lemma_})
-        if heur_sent2:
-            heur_list.extend([heur_sent, heur_sent2, heur_sent3])
-        else:
-            heur_list.append(heur_sent)
+                pos_noun_idx.append(token.text)
+                pos_noun_idx2.append(token.text)
+        if count < 1:
+            continue
+        sent = ' '.join(pos_noun_idx)
+        sent2 = ' '.join(pos_noun_idx2)
+        new_sents.extend([sent, sent2])
+    f.close()
+with open("/home/mich_qiu/PycharmProjects/MSc_Thesis/Bug-Report-Summarization/src/others/h_solution.txt", 'a') as f:
+    f.write('\n')
+    for sent in new_sents:
+        f.write(sent)
 
-with open('/home/mich_qiu/PycharmProjects/MSc_Thesis/h_info.pkl', 'wb+') as w:
-    pickle.dump(heur_list, w)
 

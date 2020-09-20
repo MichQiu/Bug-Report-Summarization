@@ -1,69 +1,205 @@
-[someone] suggests [something]
-Have you installed [something]?
-Have you tried [something]?
-I [verb] [something] to fix [something]
-[something] would be a good idea
-[something] would be a good thing
-[something] can use [something]
-[something] could use [something]
-[someone] was thinking of adding [something]
-[someone] was planning of adding [something]
-[something] can be fixed by [something]
-I will try [verb]
-[someone] thinks the reason is [something]
-[something] should solve [something]
-[something] could solve [something]
-[something] can solve [something]
-[something] must solve [something]
-[someone] believes you must [verb]
-A new [something] can be made
-Why don't use [something]
+someone suggests something
+Have you installed something?
+Have you tried something?
+I verb something to fix something
+something would be a good idea
+something would be a good thing
+something can use something
+something could use something
+someone was thinking of adding something
+someone was planning of adding something
+something can be fixed by something
+I will try verb
+someone thinks the reason is something
+something should solve something
+something could solve something
+something can solve something
+something must solve something
+someone believes you must verb
+A new something can be made
+Why don't use something
 Here's the according patch
-[someone] creates an extension to [something]
-[someone] creates an extension of [something]
-[someone] could [something]
-[someone] can run [something]
-[someone] prepare [something]
-If you [verb] do [something]
-[someone] would like to offer code
-[someone] thinks [something] can help
-[something] resolves [something]
-[something] could be solution
-[something] could be done
-could allow [something] to [verb]
-To make [something] workable [someone] needs [something]
-All [someone] can do is [something]
-I propose [something]
-[someone] resolves [something] by [verb]
-[something] could be fixed in [something]
-You need to do [something]
-Just use [something]
-[something] will work
-goal is to provide [something]
-Solution consists of [something]
-Solution consists in [something]
-[something] could be not a bad idea
-[something] could be not a bad thing
-[something] might be not a bad idea
-[something] might be not a bad thing
-[something] would allow to [verb]
-[someone] have to [verb] if [something]
-[someone] should modify [something]
-[someone] could modify [something]
-Solution is [something]
-A way is [something]
-if [someone] [verb] [something] would work
-if [something] [verb] [something] would work
-just [verb]
-Let's use [something]
-[someone] should go into [something]
-Let's try [verb]
-Try to create [something]
-You must [verb]
-You just do not [verb]
-[someone] should recommend [something]
-[someone] could recommend [something]
-[something] isn't appropriate
-[something] should hold [something]
-[someone] should work on [something]
-[someone] could work on [something]
+someone creates an extension to something
+someone creates an extension of something
+someone could something
+someone can run something
+someone prepare something
+If you verb do something
+someone would like to offer code
+someone thinks something can help
+something resolves something
+something could be solution
+something could be done
+could allow something to verb
+To make something workable someone needs something
+All someone can do is something
+I propose something
+someone resolves something by verb
+something could be fixed in something
+You need to do something
+Just use something
+something will work
+goal is to provide something
+Solution consists of something
+Solution consists in something
+something could be not a bad idea
+something could be not a bad thing
+something might be not a bad idea
+something might be not a bad thing
+something would allow to verb
+someone have to verb if something
+someone should modify something
+someone could modify something
+Solution is something
+A way is something
+if someone verb something would work
+if something verb something would work
+just verb
+Let's use something
+someone should go into something
+Let's try verb
+Try to create something
+You must verb
+You just do not verb
+someone should recommend something
+someone could recommend something
+something isn't appropriate
+something should hold something
+someone should work on something
+someone could work on something
+cat suggests cat 
+john suggests john 
+Have cat installed cat? 
+Have john installed john? 
+Have cat tried cat? 
+Have john tried john? 
+cat run cat to fix cat 
+john run john to fix john 
+cat would be a good someone 
+john would be a good john 
+cat would be a good someone 
+john would be a good john 
+cat can use cat 
+john can use john 
+cat could use cat 
+john could use john 
+cat was thinking of adding cat 
+john was thinking of adding john 
+cat was planning of adding cat 
+john was planning of adding john 
+cat can be fixed by cat 
+john can be fixed by john 
+cat will try run 
+john will try run 
+cat thinks the someone is cat 
+john thinks the john is john 
+cat should solve cat 
+john should solve john 
+cat could solve cat 
+john could solve john 
+cat can solve cat 
+john can solve john 
+cat must solve cat 
+john must solve john 
+cat believes cat must run 
+john believes john must run 
+A new cat can be made 
+A new john can be made 
+Why don't use cat 
+Why don't use john 
+Here's the according someone 
+Here's the according john 
+cat creates an someone to cat 
+john creates an john to john 
+cat creates an someone of cat 
+john creates an john of john 
+cat could cat 
+john could john 
+cat can run cat 
+john can run john 
+cat prepare cat 
+john prepare john 
+If cat run do cat 
+If john run do john 
+cat would like to offer someone 
+john would like to offer john 
+cat thinks cat can help 
+john thinks john can help 
+cat resolves cat 
+john resolves john 
+cat could be someone 
+john could be john 
+cat could be done 
+john could be done 
+could allow cat to run 
+could allow john to run 
+To make cat workable cat needs cat 
+To make john workable john needs john 
+All cat can do is cat 
+All john can do is john 
+cat propose cat 
+john propose john 
+cat resolves cat by someone 
+john resolves john by john 
+cat could be fixed in cat 
+john could be fixed in john 
+cat need to do cat 
+john need to do john 
+Just use cat 
+Just use john 
+cat will work 
+john will work 
+someone is to provide cat 
+john is to provide john 
+someone consists of cat 
+john consists of john 
+someone consists in cat 
+john consists in john 
+cat could be not a bad someone 
+john could be not a bad john 
+cat could be not a bad someone 
+john could be not a bad john 
+cat might be not a bad someone 
+john might be not a bad john 
+cat might be not a bad someone 
+john might be not a bad john 
+cat would allow to run 
+john would allow to run 
+cat have to run if cat 
+john have to run if john 
+cat should modify cat 
+john should modify john 
+cat could modify cat 
+john could modify john 
+someone is cat 
+john is john 
+A someone is cat 
+A john is john 
+if cat run cat would work 
+if john run john would work 
+if cat someone cat would work 
+if john john john would work 
+Let cat use cat 
+Let john use john 
+cat should go into cat 
+john should go into john 
+Let cat try run 
+Let john try run 
+Try to create cat 
+Try to create john 
+cat must run 
+john must run 
+cat just do not run 
+john just do not run 
+cat should recommend cat 
+john should recommend john 
+cat could recommend cat 
+john could recommend john 
+cat isn't appropriate 
+john isn't appropriate 
+cat should hold cat 
+john should hold john 
+cat should work on cat 
+john should work on john 
+cat could work on cat
+john could work on john
