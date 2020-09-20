@@ -4,7 +4,7 @@ from copy import deepcopy
 
 nlp = spacy.load("en_core_web_lg")
 
-with open("/home/mich_qiu/PycharmProjects/MSc_Thesis/Bug-Report-Summarization/src/others/h_solution.txt", 'r') as f:
+with open("/home/mich_qiu/PycharmProjects/MSc_Thesis/Bug-Report-Summarization/src/others/h_info_give.txt", 'r') as f:
     sent_idx = 1
     heur_list = []
     pos_lst = ["NOUN", "PRON", "PROPN"]
@@ -42,9 +42,9 @@ with open("/home/mich_qiu/PycharmProjects/MSc_Thesis/Bug-Report-Summarization/sr
                     heur_sent2.append({"POS": "NUM"})
                     heur_sent3.append({"POS": "NUM"})
                 elif token.pos_ not in pos_lst:
-                    heur_sent.append({"LEMMA": token.lemma_, "POS": token.pos_})
-                    heur_sent2.append({"LEMMA": token.lemma_, "POS": token.pos_})
-                    heur_sent3.append({"LEMMA": token.lemma_, "POS": token.pos_})
+                    heur_sent.append({"LEMMA": token.lemma_})
+                    heur_sent2.append({"LEMMA": token.lemma_})
+                    heur_sent3.append({"LEMMA": token.lemma_})
             else:
                 if token.text == "verb":
                     heur_sent.append({"POS": "VERB"})
@@ -55,12 +55,12 @@ with open("/home/mich_qiu/PycharmProjects/MSc_Thesis/Bug-Report-Summarization/sr
                 elif token.text == "date":
                     heur_sent.append({"POS": "NUM"})
                 elif token.pos_ not in pos_lst:
-                    heur_sent.append({"LEMMA": token.lemma_, "POS": token.pos_})
+                    heur_sent.append({"LEMMA": token.lemma_})
         if heur_sent2:
             heur_list.extend([heur_sent, heur_sent2, heur_sent3])
         else:
             heur_list.append(heur_sent)
 
-with open('/home/mich_qiu/PycharmProjects/MSc_Thesis/h_solution.pkl', 'wb+') as w:
+with open('/home/mich_qiu/PycharmProjects/MSc_Thesis/h_info.pkl', 'wb+') as w:
     pickle.dump(heur_list, w)
 

@@ -6,7 +6,7 @@ import spacy
 import argparse
 import warnings
 from pathlib import Path
-from spacy.matcher import Matcher
+from spacy.matcher import PhraseMatcher
 from nltk.parse import stanford
 from multiprocessing import Pool
 from others.utils import custom_split
@@ -200,7 +200,7 @@ class Heuristics():
         question_sent_idxs = []
         question_label_list = ["SBARQ", "SQ"]
         for idx, sent in enumerate(text):
-            if len(sent.split()) > 128:
+            if len(sent.split()) > 50:
                 continue
             elif "?" not in sent:
                 continue
@@ -256,8 +256,8 @@ class Heuristics():
 
     def _is_statement(self, text, heuristics_file, sent_type):
         statement_sent_idxs = []
-        matcher = Matcher(nlp.vocab)
-        with open(heuristics_file, 'rb') as f:
+        matcher = PhraseMatcher(nlp.vocab)
+        with open(heuristics_file, 'r') as f:
             heur_list = pickle.load(f)
             matcher.add(sent_type, heur_list)
             docs = nlp.pipe(text)
