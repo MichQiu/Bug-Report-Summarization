@@ -202,58 +202,81 @@ class Heuristics():
         """Use CFG parsing to determine if a sentence is a question"""
         question_sent_idxs = []
         for idx, sent in enumerate(text):
-            if sent[-1] == "?":
-                question_sent_idxs.append(idx)
+            try:
+                if sent[-1] == "?":
+                    question_sent_idxs.append(idx)
+            except:
+                continue
         return question_sent_idxs
 
     def _is_description_pr(self): #tested
         """Check if sentences are descriptions in pretraining data"""
         description_sent_idxs = []
-        split_chars = ['.', '?', '!']
-        if self.bug_comments[0] != '':
-            self.bug_comments[0] = self.bug_comments[0].replace('\n', ' ')
-            split_text = custom_split(self.bug_comments[0], split_chars)
-            if len(split_text) > 1:
-                self.bug_comments.pop(0)
-                self.bug_comments = split_text + self.bug_comments
-                for idx, sent in enumerate(split_text):
-                    description_sent_idxs.append(idx)
+        try:
+            split_chars = ['.', '?', '!']
+            if self.bug_comments[0] != '':
+                self.bug_comments[0] = self.bug_comments[0].replace('\n', ' ')
+                split_text = custom_split(self.bug_comments[0], split_chars)
+                if len(split_text) > 1:
+                    self.bug_comments.pop(0)
+                    self.bug_comments = split_text + self.bug_comments
+                    for idx, sent in enumerate(split_text):
+                        try:
+                            description_sent_idxs.append(idx)
+                        except:
+                            continue
+                else:
+                    description_sent_idxs.append(0)
             else:
-                description_sent_idxs.append(0)
-        else:
-            self.bug_comments.pop(0)
+                self.bug_comments.pop(0)
+        except:
+            pass
         return description_sent_idxs
 
     def _is_code(self, text): #tested
         """Check if sentences mainly consist of code and non-natural language texts"""
         code_sent_idxs = []
-        for i in range(len(text)): # add more regex patterns for different type of codes
-            code_tokens = re.findall(r'([<a-zA-z0-9>(){}.,\-_/\\:;!@#$%^&*?\[\]|`~]+\.[<a-zA-z0-9>(){}.,\-_/\\:;!@#$%^&*?\[\]|`~]+)|([!@#$%^&*()\-_+=\[\]{}:;<>|\~`/\\]+[a-zA-z0-9]+)+|([!@#$%^&*()\-_+=\[\]{}:;<>|\~`/\\]+)+|([a-zA-Z0-9]+[!@#$%^&*()_+=\[\]{}:;<>|\~`/\\0-9]+[a-zA-Z0-9]+)+|([a-zA-Z0-9]+[!@#$%^&*()\-_+=\[\]{}:;<>|\~`/\\0-9]+)+|(\[.+\])|(\{.+\})|(\(.+\))', text[i])
-            cleaned_token_list = []
-            for token in code_tokens:
-                cleaned_code_token = ''.join(token)
-                cleaned_token_list.append(cleaned_code_token)
-            joined_tokens = ' '.join(cleaned_token_list)
-            if len(joined_tokens) > len(text[i]):
-                continue
-            else:
-                code_percentage = len(joined_tokens) / len(text[i])
-                if code_percentage > 0.5:
-                    code_sent_idxs.append(i)
+        try:
+            for i in range(len(text)):  # add more regex patterns for different type of codes
+                try:
+                    code_tokens = re.findall(
+                        r'([<a-zA-z0-9>(){}.,\-_/\\:;!@#$%^&*?\[\]|`~]+\.[<a-zA-z0-9>(){}.,\-_/\\:;!@#$%^&*?\[\]|`~]+)|([!@#$%^&*()\-_+=\[\]{}:;<>|\~`/\\]+[a-zA-z0-9]+)+|([!@#$%^&*()\-_+=\[\]{}:;<>|\~`/\\]+)+|([a-zA-Z0-9]+[!@#$%^&*()_+=\[\]{}:;<>|\~`/\\0-9]+[a-zA-Z0-9]+)+|([a-zA-Z0-9]+[!@#$%^&*()\-_+=\[\]{}:;<>|\~`/\\0-9]+)+|(\[.+\])|(\{.+\})|(\(.+\))',
+                        text[i])
+                    cleaned_token_list = []
+                    for token in code_tokens:
+                        cleaned_code_token = ''.join(token)
+                        cleaned_token_list.append(cleaned_code_token)
+                    joined_tokens = ' '.join(cleaned_token_list)
+                    if len(joined_tokens) > len(text[i]):
+                        continue
+                    else:
+                        code_percentage = len(joined_tokens) / len(text[i])
+                        if code_percentage > 0.5:
+                            code_sent_idxs.append(i)
+                except:
+                    continue
+        except:
+            pass
         return code_sent_idxs
 
     def _is_statement(self, text, heuristics_file, sent_type):
         statement_sent_idxs = []
-        matcher = PhraseMatcher(nlp.vocab, attr="POS")
-        with open(heuristics_file, 'r') as f:
-            heur_list = [nlp(' '.join(line.split())) for line in f]
-            matcher.add(sent_type, heur_list)
-            docs = nlp.pipe(text, disable=["parser", "ner", "textcat"])
-            matches = matcher.pipe(docs, return_matches=True)
-            match_list = [match for match in matches]
-            for idx, match in enumerate(match_list):
-                if match[1]:
-                    statement_sent_idxs.append(idx)
+        try:
+            matcher = PhraseMatcher(nlp.vocab, attr="POS")
+            with open(heuristics_file, 'r') as f:
+                heur_list = [nlp(' '.join(line.split())) for line in f]
+                matcher.add(sent_type, heur_list)
+                docs = nlp.pipe(text, disable=["parser", "ner", "textcat"])
+                matches = matcher.pipe(docs, return_matches=True)
+                match_list = [match for match in matches]
+                for idx, match in enumerate(match_list):
+                    try:
+                        if match[1]:
+                            statement_sent_idxs.append(idx)
+                    except:
+                        continue
+        except:
+            pass
         return statement_sent_idxs
 
 def apply_full(args):
