@@ -341,7 +341,8 @@ if __name__ == '__main__':
     arg_parser.add_argument("-n_cpus", default=10, type=int)
     arg_parser.add_argument("-parser_dir", default='', type=str)
     arg_parser.add_argument("-parser_file", default='', type=str)
-    arg_parser.add_argument("-heuristics", default='', type=str)
+    arg_parser.add_argument("-h_solution", default='', type=str)
+    arg_parser.add_argument("-h_info", default='', type=str)
 
     args = arg_parser.parse_args()
     apply_full(args)
