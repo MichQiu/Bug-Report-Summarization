@@ -1,20 +1,30 @@
 from tokenizers import BertWordPieceTokenizer
 from os import listdir
+import argparse
 
-data_dir = '/home/mich_qiu/PycharmProjects/MSc_Thesis/data/Pretraining/shards/'
-paths = [data_dir + file for file in listdir(data_dir)]
+def train_tokenizer(args):
 
-tokenizer = BertWordPieceTokenizer(lowercase=False)
+    paths = [args.data_dir + file for file in listdir(args.data_dir)]
+    tokenizer = BertWordPieceTokenizer(lowercase=False)
+    tokenizer.train(files=paths, vocab_size=args.vocab_size, special_tokens=[
+                "[PAD]",
+                "[UNK]",
+                "[CLS]",
+                "[SEP]",
+                "[MASK]",
+                "[DES]",
+                "[QS]",
+                "[CODE]",
+                "[SOLU]",
+                "[INFO]",
+                "[NON]"])
+    tokenizer.save_model(args.save_dir, "Bugzilla_tokenizer")
 
-tokenizer.train(files=paths, vocab_size=50000, special_tokens=[
-            "[PAD]",
-            "[UNK]",
-            "[CLS]",
-            "[SEP]",
-            "[MASK]",
-            "[DES]",
-            "[QS]",
-            "[CODE]",
-            "[ST]",
-            "[NON]"])
-tokenizer.save_model('/home/mich_qiu/PycharmProjects/MSc_Thesis/data/Pretraining/', "Bugzilla_tokenizer")
+if __name__ == '__main__':
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--data_dir", default='', type=str)
+    arg_parser.add_argument("--save_dir", default='', type=str)
+    arg_parser.add_argument("--vocab_size", default=50000, type=int)
+
+    args = arg_parser.parse_args()
+    train_tokenizer(args)
