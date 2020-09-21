@@ -279,14 +279,19 @@ def split_first_comment(text):
 
 def write_to_text(data_dir, save_file):
     files = [file for file in listdir(data_dir)]
-    for file in files:
-        data = torch.load(data_dir + file)
-        with open(save_file, 'a+') as f:
+    file_num = 0
+    with open(save_file + str(file_num), 'a+') as f:
+        for file in files:
+            data = torch.load(data_dir + file)
             for bug in list(data.keys()):
                 data[bug] = split_first_comment(data[bug])
                 for sent in data[bug]:
                     f.write(sent + '\n')
                 f.write(' \n')
+                if os.stat(save_file + file_num).st_size > 50000:
+                    f.close()
+                    file_num += 1
+                    f = open(save_file + str(file_num), 'a+')
 
 def convert_file_format(data_dir):
     files = [file for file in listdir(data_dir)]
