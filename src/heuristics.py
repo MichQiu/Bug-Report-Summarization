@@ -207,24 +207,9 @@ class Heuristics():
     def _is_question(self, text): #tested
         """Use CFG parsing to determine if a sentence is a question"""
         question_sent_idxs = []
-        question_label_list = ["SBARQ", "SQ"]
         for idx, sent in enumerate(text):
-            if len(sent.split()) > 50:
-                continue
-            elif "?" not in sent:
-                continue
-            else:
-                tree = self.parser.raw_parse(sent)
-                for tr in tree:
-                    tree_str = str(tr)
-                    break
-                for label in question_label_list:
-                    if label in tree_str:
-                        question_sent_idxs.append(idx)
-                        break
-                    elif sent[-1] == "?":
-                        question_sent_idxs.append(idx)
-                        break
+            if sent[-1] == "?":
+                question_sent_idxs.append(idx)
         return question_sent_idxs
 
     def _is_description_pr(self): #tested
