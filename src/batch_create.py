@@ -73,10 +73,11 @@ def main(args):
 
         last_process.wait()
 
-        for i in range(args.n_test_shards):
-            last_process = create_record_worker(output_file_prefix + '_phase2_', i)
+        if args.n_test_shards:
+            for i in range(args.n_test_shards):
+                last_process = create_record_worker(output_file_prefix + '_phase2_', i)
 
-        last_process.wait()
+            last_process.wait()
 
 
 if __name__ == "__main__":
@@ -112,7 +113,8 @@ if __name__ == "__main__":
     parser.add_argument(
         '--input_files',
         type=str,
-        help='Specify the input files in a comma-separated list (no spaces)'
+        help='Specify the input files in a comma-separated list (no spaces)',
+        required=False
     )
 
     parser.add_argument(
@@ -126,7 +128,8 @@ if __name__ == "__main__":
         '--n_test_shards',
         type=int,
         help='Specify the number of test shards to generate',
-        default=256
+        default=256,
+        required=False
     )
 
     parser.add_argument(
