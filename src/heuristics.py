@@ -99,8 +99,8 @@ class Heuristics():
         description_sent_idxs = self._is_description_pr()
         question_sent_idxs = self._is_question(self.bug_comments)
         code_sent_idxs = self._is_code(self.bug_comments)
-        solution_sent_idxs = self._is_statement(self.bug_comments, self.args.heuristics, "solution")
-        info_sent_idxs = self._is_statement(self.bug_comments, self.args.heuristics, "info")
+        solution_sent_idxs = self._is_statement(self.bug_comments, self.args.h_solution, "solution")
+        info_sent_idxs = self._is_statement(self.bug_comments, self.args.h_info, "info")
         for idx in description_sent_idxs:
             tokens = self.bug_comments[idx].split()
             tagged_tokens = ['[DES]'] + tokens
@@ -335,14 +335,14 @@ def _apply_heuristics_pr(params):
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("-data_dir", default='', type=str)
-    arg_parser.add_argument("-finetune", default=False, type=bool)
-    arg_parser.add_argument("-save_file", default='', type=str)
-    arg_parser.add_argument("-n_cpus", default=10, type=int)
-    arg_parser.add_argument("-parser_dir", default='', type=str)
-    arg_parser.add_argument("-parser_file", default='', type=str)
-    arg_parser.add_argument("-h_solution", default='', type=str)
-    arg_parser.add_argument("-h_info", default='', type=str)
+    arg_parser.add_argument("--data_dir", default='', type=str)
+    arg_parser.add_argument("--finetune", default=False, type=bool)
+    arg_parser.add_argument("--save_file", default='', type=str)
+    arg_parser.add_argument("--n_cpus", default=10, type=int)
+    arg_parser.add_argument("--parser_dir", default='', type=str)
+    arg_parser.add_argument("--parser_file", default='', type=str)
+    arg_parser.add_argument("--h_solution", default='', type=str)
+    arg_parser.add_argument("--h_info", default='', type=str)
 
     args = arg_parser.parse_args()
     apply_full(args)
