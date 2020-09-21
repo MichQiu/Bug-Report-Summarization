@@ -7,7 +7,6 @@ import argparse
 import warnings
 from pathlib import Path
 from spacy.matcher import PhraseMatcher
-from nltk.parse import stanford
 from multiprocessing import Pool
 from others.utils import custom_split
 from tqdm import tqdm
@@ -27,11 +26,6 @@ class Heuristics():
         self.args = args
         self.bug_comments = bug_comments
         self.data_dict = data_dict
-        os.environ['STANFORD_PARSER'] = self.args.parser_dir
-        os.environ['STANFORD_MODELS'] = self.args.parser_dir
-
-        self.parser = stanford.StanfordParser(
-            model_path=self.args.parser_file)
 
     def evaluate_sent(self, word_file): #tested
         """Get indices for evaluative and duplicate sentences"""
@@ -324,8 +318,6 @@ if __name__ == '__main__':
     arg_parser.add_argument("--finetune", default=False, type=bool)
     arg_parser.add_argument("--save_file", default='', type=str)
     arg_parser.add_argument("--n_cpus", default=10, type=int)
-    arg_parser.add_argument("--parser_dir", default='', type=str)
-    arg_parser.add_argument("--parser_file", default='', type=str)
     arg_parser.add_argument("--h_solution", default='', type=str)
     arg_parser.add_argument("--h_info", default='', type=str)
 
