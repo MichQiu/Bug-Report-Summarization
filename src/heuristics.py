@@ -244,9 +244,9 @@ class Heuristics():
 
     def _is_statement(self, text, heuristics_file, sent_type):
         statement_sent_idxs = []
-        matcher = PhraseMatcher(nlp.vocab)
+        matcher = PhraseMatcher(nlp.vocab, attr="POS")
         with open(heuristics_file, 'r') as f:
-            heur_list = [nlp(line) for line in f]
+            heur_list = [nlp(' '.join(line.split())) for line in f]
             matcher.add(sent_type, heur_list)
             docs = nlp.pipe(text, disable=["parser", "ner", "textcat"])
             matches = matcher.pipe(docs, return_matches=True)
