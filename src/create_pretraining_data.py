@@ -446,8 +446,8 @@ def main():
                         help="Probability to create a sequence shorter than maximum sequence length")
 
     parser.add_argument("--do_lower_case",
-                        action='store_false',
-                        default=False,
+                        action='store_true',
+                        default=True,
                         help="Whether to lower case the input text. True for uncased models, False for cased models.")
     parser.add_argument('--random_seed',
                         type=int,
