@@ -17,6 +17,7 @@ import multiprocessing
 import os
 import pprint
 import subprocess
+from os import listdir
 
 
 def main(args):
@@ -32,7 +33,7 @@ def main(args):
 
     directory_structure = {
         'hdf5': working_dir + '/hdf5',
-        'shards': working_dir + '/shards'
+        'phase1': working_dir + '/phase1'
     }
 
     print('\nDirectory Structure:')
@@ -46,9 +47,9 @@ def main(args):
         if not os.path.exists(directory_structure['hdf5'] + "/" + args.dataset):
             os.makedirs(directory_structure['hdf5'] + "/" + args.dataset)
 
-        def create_record_worker(filename_prefix, shard_id, output_format='hdf5'):
+        def create_record_worker(filename_prefix, shard_id, input_file, output_format='hdf5'):
             bert_preprocessing_command = 'python' + ' ' + working_dir + '/Bug-Report-Summarization/src' + '/create_pretraining_data.py'
-            bert_preprocessing_command += ' --input_file=' + directory_structure['shards'] + '/' + args.dataset + '/' + filename_prefix + '_' + str(shard_id) + '.txt'
+            bert_preprocessing_command += ' --input_file=' + input_file
             bert_preprocessing_command += ' --output_file=' + directory_structure['hdf5'] + '/' + args.dataset + '/' + filename_prefix + '_' + str(shard_id) + '.' + output_format
             bert_preprocessing_command += ' --vocab_file=' + args.vocab_file
             bert_preprocessing_command += ' --do_lower_case' if args.do_lower_case else ''
@@ -68,8 +69,9 @@ def main(args):
 
         output_file_prefix = args.dataset
 
+        files = [directory_structure['phase1'] + '/' + file for file in listdir(directory_structure['phase1'])]
         for i in range(args.n_training_shards):
-            last_process = create_record_worker(output_file_prefix + '_phase1_', i)
+            last_process = create_record_worker(output_file_prefix + '_phase1_', i, files[i])
 
         last_process.wait()
 
@@ -105,8 +107,8 @@ if __name__ == "__main__":
         type=str,
         help='Specify the dataset to perform --action on',
         choices={
-            'regular_data'
-            'heuristics_data'
+            'regular',
+            'heuristics'
         }
     )
 
