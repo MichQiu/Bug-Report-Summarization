@@ -99,7 +99,8 @@ class Heuristics():
         description_sent_idxs = self._is_description_pr()
         question_sent_idxs = self._is_question(self.bug_comments)
         code_sent_idxs = self._is_code(self.bug_comments)
-        statement_sent_idxs = self._is_statement(self.bug_comments, self.args.statement, "statement")
+        solution_sent_idxs = self._is_statement(self.bug_comments, self.args.heuristics, "solution")
+        info_sent_idxs = self._is_statement(self.bug_comments, self.args.heuristics, "info")
         for idx in description_sent_idxs:
             tokens = self.bug_comments[idx].split()
             tagged_tokens = ['[DES]'] + tokens
@@ -121,12 +122,20 @@ class Heuristics():
                 tagged_tokens = ['[CODE]'] + tokens
                 self.bug_comments[idx] = ' '.join(tagged_tokens)
                 tagged_idx.append(idx)
-        for idx in statement_sent_idxs:
+        for idx in solution_sent_idxs:
             if idx in tagged_idx:
                 pass
             else:
                 tokens = self.bug_comments[idx].split()
-                tagged_tokens = ['[ST]'] + tokens
+                tagged_tokens = ['[SOLU]'] + tokens
+                self.bug_comments[idx] = ' '.join(tagged_tokens)
+                tagged_idx.append(idx)
+        for idx in info_sent_idxs:
+            if idx in tagged_idx:
+                pass
+            else:
+                tokens = self.bug_comments[idx].split()
+                tagged_tokens = ['[INFO]'] + tokens
                 self.bug_comments[idx] = ' '.join(tagged_tokens)
                 tagged_idx.append(idx)
         for idx in range(len(self.bug_comments)):
@@ -258,9 +267,9 @@ class Heuristics():
         statement_sent_idxs = []
         matcher = PhraseMatcher(nlp.vocab)
         with open(heuristics_file, 'r') as f:
-            heur_list = pickle.load(f)
+            heur_list = [nlp(line) for line in f]
             matcher.add(sent_type, heur_list)
-            docs = nlp.pipe(text)
+            docs = nlp.pipe(text, disable=["parser", "ner", "textcat"])
             matches = matcher.pipe(docs, return_matches=True)
             match_list = [match for match in matches]
             for idx, match in enumerate(match_list):

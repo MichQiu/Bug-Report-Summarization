@@ -47,5 +47,7 @@ with open("/home/mich_qiu/PycharmProjects/MSc_Thesis/Bug-Report-Summarization/sr
     f.write('\n')
     for sent in new_sents:
         f.write(sent)
+    f.close()
+
 
 
