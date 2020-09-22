@@ -285,6 +285,7 @@ def create_instances_from_document(
                 tokens = []
                 segment_ids = []
                 intent_ids = []
+                tokens_a_intent_idx = 0
                 tokens.append("[CLS]")
                 segment_ids.append(0)
                 for token in tokens_a:
@@ -301,7 +302,8 @@ def create_instances_from_document(
                 segment_ids.append(0)
                 intent_ids.append(tokens_a_intent_idx)
 
-                for token in tokens_a:
+                tokens_b_intent_idx = 0
+                for token in tokens_b:
                     if token in intent_tokens.keys():
                         tokens_b_intent_idx = intent_tokens[token]
                         break
@@ -377,6 +379,7 @@ def create_masked_lm_predictions(tokens, masked_lm_prob,
             break
         if len(masked_lms) + len(index_set) > num_to_predict:
             continue
+        is_any_index_covered = False
         for index in index_set:
             if index in covered_indexes:
                 is_any_index_covered = True
