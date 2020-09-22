@@ -74,13 +74,13 @@ def main(args):
             last_process = create_record_worker(output_file_prefix + '_phase1_', i, files[i])
 
         last_process.wait()
-
+        '''
         if args.n_test_shards:
             for i in range(args.n_test_shards):
                 last_process = create_record_worker(output_file_prefix + '_phase2_', i)
 
             last_process.wait()
-
+        '''
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
