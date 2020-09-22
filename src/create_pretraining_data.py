@@ -309,7 +309,6 @@ def create_masked_lm_predictions(tokens, masked_lm_prob,
                                  max_predictions_per_seq, vocab_words, rng):
     """Creates the predictions for the masked LM objective."""
 
-    special_tokens = ["[CLS]", "[SEP]", "[DES]", "[QS]", "[CODE]", "[ST]"]
     cand_indexes = []
     for (i, token) in enumerate(tokens):
         if token == "[CLS]" or token == "[SEP]":
