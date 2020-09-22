@@ -79,7 +79,7 @@ def write_instance_to_example_file(instances, tokenizer, max_seq_length,
     features["masked_lm_positions"] = np.zeros([num_instances, max_predictions_per_seq], dtype="int32")
     features["masked_lm_ids"] = np.zeros([num_instances, max_predictions_per_seq], dtype="int32")
     features["next_sentence_labels"] = np.zeros(num_instances, dtype="int32")
-    features["intent_labels"] = np.zeros(num_instances, dtype="int32")
+    features["intent_sentence_labels"] = np.zeros(num_instances, dtype="int32")
 
     for inst_index, instance in enumerate(tqdm(instances)):
         input_ids = tokenizer.convert_tokens_to_ids(instance.tokens)
