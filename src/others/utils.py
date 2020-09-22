@@ -298,14 +298,14 @@ def shard_text(data_dir, save_file, shard_size):
     r = open(data_dir, 'r')
     with open(save_file + str(file_num) + '.txt', 'a+') as f:
         for line in r:
-            if line == ' ':
+            if line == ' \n':
                 if os.stat(save_file + str(file_num) + '.txt').st_size > shard_size:
                     f.close()
                     file_num += 1
                     f = open(save_file + str(file_num) + '.txt', 'a+')
                 f.write(' \n')
             else:
-                f.write(r + '\n')
+                f.write(line + '\n')
 
 def convert_file_format(data_dir):
     files = [file for file in listdir(data_dir)]
