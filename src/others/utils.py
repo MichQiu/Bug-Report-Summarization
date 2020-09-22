@@ -277,10 +277,10 @@ def split_first_comment(text):
             text[0] = ' '.join(split_text[0].split())
             return text
 
-def write_to_text(data_dir, save_file):
+def write_to_text(data_dir, save_file, shard_size):
     files = [file for file in listdir(data_dir)]
     file_num = 0
-    with open(save_file + str(file_num), 'a+') as f:
+    with open(save_file + str(file_num) + '.txt', 'a+') as f:
         for file in files:
             data = torch.load(data_dir + file)
             for bug in list(data.keys()):
@@ -288,10 +288,24 @@ def write_to_text(data_dir, save_file):
                 for sent in data[bug]:
                     f.write(sent + '\n')
                 f.write(' \n')
-                if os.stat(save_file + file_num).st_size > 50000:
+                if os.stat(save_file + str(file_num) + '.txt').st_size > shard_size:
                     f.close()
                     file_num += 1
-                    f = open(save_file + str(file_num), 'a+')
+                    f = open(save_file + str(file_num) + '.txt', 'a+')
+
+def shard_text(data_dir, save_file, shard_size):
+    file_num = 0
+    r = open(data_dir, 'r')
+    with open(save_file + str(file_num) + '.txt', 'a+') as f:
+        for line in r:
+            if line == ' ':
+                if os.stat(save_file + str(file_num) + '.txt').st_size > shard_size:
+                    f.close()
+                    file_num += 1
+                    f = open(save_file + str(file_num) + '.txt', 'a+')
+                f.write(' \n')
+            else:
+                f.write(r + '\n')
 
 def convert_file_format(data_dir):
     files = [file for file in listdir(data_dir)]
