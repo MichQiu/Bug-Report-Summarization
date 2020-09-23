@@ -48,7 +48,7 @@ def main(args):
             os.makedirs(directory_structure['hdf5'] + "/" + args.dataset)
 
         def create_record_worker(filename_prefix, shard_id, input_file, output_format='hdf5'):
-            bert_preprocessing_command = 'python' + ' ' + working_dir + '/Bug-Report-Summarization/src' + '/create_pretraining_data.py'
+            bert_preprocessing_command = 'python' + ' ' + working_dir + '/Bug-Report-Summarization/src' + '/create_pretraining_data_h.py'
             bert_preprocessing_command += ' --input_file=' + input_file
             bert_preprocessing_command += ' --output_file=' + directory_structure['hdf5'] + '/' + args.dataset + '/' + filename_prefix + '_' + str(shard_id) + '.' + output_format
             bert_preprocessing_command += ' --vocab_file=' + args.vocab_file
