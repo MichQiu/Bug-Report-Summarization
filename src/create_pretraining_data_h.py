@@ -278,7 +278,8 @@ def create_instances_from_document(
                     tokens_b.extend(random_document[random_start])
                     if len(tokens_b) >= target_b_length:
                         break
-
+                    num_unused_segments = len(current_chunk) - 1
+                    i -= num_unused_segments
                 # Actual next
                 else:
                     is_random_next = False
