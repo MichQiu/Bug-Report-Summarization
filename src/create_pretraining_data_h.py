@@ -176,6 +176,7 @@ def create_training_instances(input_files, tokenizer, max_seq_length,
                 # Empty lines are used as document delimiters
                 if not line:
                     all_documents.append([])
+                    intent_tokens.append([])
                 else:
                     split_line = line.split()
                     line = " ".join(split_line[1:])
@@ -185,13 +186,14 @@ def create_training_instances(input_files, tokenizer, max_seq_length,
                     intent_token = split_line[0]
                     intent_tokens[-1].append(intent_token)
 
-
     # Remove empty documents
     all_documents = [x for x in all_documents if x]
     intent_tokens = [x for x in intent_tokens if x]
     document_intent_match = list(zip(all_documents, intent_tokens))
     rng.shuffle(document_intent_match)
     all_documents, intent_tokens = zip(*document_intent_match)
+    all_documents = list(all_documents)
+    intent_tokens = list(intent_tokens)
 
     vocab_words = list(tokenizer.vocab.keys())
     instances = []
@@ -233,123 +235,105 @@ def create_instances_from_document(
     # segments "A" and "B" based on the actual "sentences" provided by the user
     # input.
     instances = []
-    current_chunk = []
     current_intent = []
-    current_length = 0
     i = 0
     random_document_index = 0
-    b_end = 0
     random_start = 0
     while i < len(document):
-        segment = document[i]
-        current_chunk.append(segment)
-        current_intent.append(intent_tokens_in_doc[i])
-        current_length += len(segment)
-        if i == len(document) - 1 or current_length >= target_seq_length:
-            if current_chunk:
-                a_end = 0
-                if len(current_chunk) >= 2:
-                    a_end = rng.randint(0, len(current_chunk) - 1)
-                tokens_a = []
-                tokens_a.extend(current_chunk[a_end])
+        sentence = document[i]
+        if len(sentence) < target_seq_length:
+            tokens_a = []
+            tokens_a.extend(sentence)
+            current_intent.append(intent_tokens_in_doc[i])
+            tokens_b = []
 
-                tokens_b = []
-                # Random next
-                is_random_next = False
-                if len(current_chunk) == 1 or rng.random() < 0.5:
-                    is_random_next = True
-                    target_b_length = target_seq_length - len(tokens_a)
+            if i == len(document) - 1 or rng.random() < 0.5:
+                is_random_next = True
+                target_b_length = target_seq_length - len(tokens_a)
 
-                    # This should rarely go for more than one iteration for large
-                    # corpora. However, just to be careful, we try to make sure that
-                    # the random document is not the same as the document
-                    # we're processing.
-                    for _ in range(10):
-                        random_document_index = rng.randint(0, len(all_documents) - 1)
-                        if random_document_index != document_index:
-                            break
-
-                    # If picked random document is the same as the current document
-                    if random_document_index == document_index:
-                        is_random_next = False
-
-                    random_document = all_documents[random_document_index]
-                    random_start = rng.randint(0, len(random_document) - 1)
-                    tokens_b.extend(random_document[random_start])
-                    if len(tokens_b) >= target_b_length:
+                # This should rarely go for more than one iteration for large
+                # corpora. However, just to be careful, we try to make sure that
+                # the random document is not the same as the document
+                # we're processing.
+                for _ in range(10):
+                    random_document_index = rng.randint(0, len(all_documents) - 1)
+                    if random_document_index != document_index:
                         break
-                    num_unused_segments = len(current_chunk) - 1
-                    i -= num_unused_segments
-                # Actual next
-                else:
+
+                # If picked random document is the same as the current document
+                if random_document_index == document_index:
                     is_random_next = False
-                    while True:
-                        b_end = rng.randint(0, len(current_chunk) - 1)
-                        if b_end != a_end:
-                            break
-                    tokens_b.extend(current_chunk[b_end])
-                truncate_seq_pair(tokens_a, tokens_b, max_num_tokens, rng)
 
-                assert len(tokens_a) >= 1
-                assert len(tokens_b) >= 1
+                random_document = all_documents[random_document_index]
+                random_start = rng.randint(0, len(random_document) - 1)
+                tokens_b.extend(random_document[random_start])
+                if len(tokens_b) >= target_b_length:
+                    break
+            # Actual next
+            else:
+                is_random_next = False
+                tokens_b.extend(document[i+1])
+            truncate_seq_pair(tokens_a, tokens_b, max_num_tokens, rng)
 
-                # print('a', tokens_a)
-                # print('b', tokens_b)
+            assert len(tokens_a) >= 1
+            assert len(tokens_b) >= 1
 
-                special_intent_tokens = {"[DES]": 6, "[QS]": 7, "[CODE]": 8, "[SOLU]": 9, "[INFO]": 10, "[NON]": 11}
-                tokens = []
-                segment_ids = []
-                intent_ids = []
-                tokens_a_intent_idx = special_intent_tokens[current_intent[a_end]]
-                tokens.append("[CLS]")
+            #print('a', tokens_a)
+            #print('b', tokens_b)
+
+            special_intent_tokens = {"[DES]": 6, "[QS]": 7, "[CODE]": 8, "[SOLU]": 9, "[INFO]": 10, "[NON]": 11}
+            tokens = []
+            segment_ids = []
+            intent_ids = []
+            tokens_a_intent_idx = special_intent_tokens[current_intent[0]]
+            tokens.append("[CLS]")
+            segment_ids.append(0)
+            intent_ids.append(tokens_a_intent_idx)
+            # print(('sent a tag', tokens_a_intent_idx))
+            for token in tokens_a:
+                tokens.append(token)
                 segment_ids.append(0)
                 intent_ids.append(tokens_a_intent_idx)
-                # print(('sent a tag', tokens_a_intent_idx))
-                for token in tokens_a:
-                    tokens.append(token)
-                    segment_ids.append(0)
-                    intent_ids.append(tokens_a_intent_idx)
 
-                tokens.append("[SEP]")
-                segment_ids.append(0)
-                intent_ids.append(tokens_a_intent_idx)
+            tokens.append("[SEP]")
+            segment_ids.append(0)
+            intent_ids.append(tokens_a_intent_idx)
 
-                if is_random_next:
-                    tokens_b_intent_idx = special_intent_tokens[current_intent[b_end]]
-                else:
-                    tokens_b_intent_idx = special_intent_tokens[intent_tokens[random_document_index][random_start]]
-                # print(('sent b tag', tokens_b_intent_idx))
-                if rng.random() < 0.05:
-                    remaining_intent_ids = list(special_intent_tokens.values())
-                    remaining_intent_ids.remove(tokens_b_intent_idx)
-                    tokens_b_intent_idx = random.choice(remaining_intent_ids)
-                for token in tokens_b:
-                    tokens.append(token)
-                    segment_ids.append(1)
-                    intent_ids.append(tokens_b_intent_idx)
-                tokens.append("[SEP]")
+            if is_random_next:
+                tokens_b_intent_idx = special_intent_tokens[current_intent[-1]]
+            else:
+                tokens_b_intent_idx = special_intent_tokens[intent_tokens[random_document_index][random_start]]
+            # print(('sent b tag', tokens_b_intent_idx))
+            if rng.random() < 0.05:
+                remaining_intent_ids = list(special_intent_tokens.values())
+                remaining_intent_ids.remove(tokens_b_intent_idx)
+                tokens_b_intent_idx = random.choice(remaining_intent_ids)
+            for token in tokens_b:
+                tokens.append(token)
                 segment_ids.append(1)
                 intent_ids.append(tokens_b_intent_idx)
+            tokens.append("[SEP]")
+            segment_ids.append(1)
+            intent_ids.append(tokens_b_intent_idx)
 
-                if tokens_a_intent_idx == tokens_b_intent_idx:
-                    is_diff_intent = 0
-                else:
-                    is_diff_intent = 1
+            if tokens_a_intent_idx == tokens_b_intent_idx:
+                is_diff_intent = 0
+            else:
+                is_diff_intent = 1
 
-                (tokens, masked_lm_positions,
-                 masked_lm_labels) = create_masked_lm_predictions(
-                    tokens, masked_lm_prob, max_predictions_per_seq, vocab_words, rng)
-                instance = TrainingInstance(
-                    tokens=tokens,
-                    segment_ids=segment_ids,
-                    intent_ids=intent_ids,
-                    is_random_next=is_random_next,
-                    is_diff_intent=is_diff_intent,
-                    masked_lm_positions=masked_lm_positions,
-                    masked_lm_labels=masked_lm_labels)
-                instances.append(instance)
-            current_chunk = []
-            current_length = 0
+            (tokens, masked_lm_positions,
+             masked_lm_labels) = create_masked_lm_predictions(
+                tokens, masked_lm_prob, max_predictions_per_seq, vocab_words, rng)
+            instance = TrainingInstance(
+                tokens=tokens,
+                segment_ids=segment_ids,
+                intent_ids=intent_ids,
+                is_random_next=is_random_next,
+                is_diff_intent=is_diff_intent,
+                masked_lm_positions=masked_lm_positions,
+                masked_lm_labels=masked_lm_labels)
+            instances.append(instance)
+            current_intent = []
         i += 1
 
     return instances
@@ -472,17 +456,17 @@ def main():
 
     # int
     parser.add_argument("--max_seq_length",
-                        default=128,
+                        default=64,
                         type=int,
                         help="The maximum total input sequence length after WordPiece tokenization. \n"
                              "Sequences longer than this will be truncated, and sequences shorter \n"
                              "than this will be padded.")
     parser.add_argument("--dupe_factor",
-                        default=10,
+                        default=5,
                         type=int,
                         help="Number of times to duplicate the input data (with different masks).")
     parser.add_argument("--max_predictions_per_seq",
-                        default=20,
+                        default=10,
                         type=int,
                         help="Maximum sequence length.")
 
@@ -509,7 +493,7 @@ def main():
 
     args = parser.parse_args()
 
-    tokenizer = BertTokenizer(args.vocab_file, do_lower_case=args.do_lower_case, max_len=512)
+    tokenizer = BertTokenizer(args.vocab_file, do_lower_case=args.do_lower_case, max_len=256)
 
     input_files = []
     if os.path.isfile(args.input_file):
