@@ -281,7 +281,7 @@ def create_instances_from_document(
             #print('a', tokens_a)
             #print('b', tokens_b)
 
-            special_intent_tokens = {"[DES]": 6, "[QS]": 7, "[CODE]": 8, "[SOLU]": 9, "[INFO]": 10, "[NON]": 11}
+            special_intent_tokens = {"[DES]": 1, "[QS]": 2, "[CODE]": 3, "[SOLU]": 4, "[INFO]": 5, "[NON]": 6}
             tokens = []
             segment_ids = []
             intent_ids = []
