@@ -26,7 +26,6 @@ def str2bool(v):
 if __name__ == '__main__':
     # argument parser for preprocessing
     parser = argparse.ArgumentParser()
-    parser.add_argument("-pretrained_model", default='bert', type=str)
 
     # the type of preprocessing to use
     parser.add_argument("-mode", default='', type=str) # format_to_bert, format_to_lines, tokenize
@@ -35,6 +34,8 @@ if __name__ == '__main__':
     parser.add_argument("-raw_path", default='../../line_data')
     parser.add_argument("-raw_path_annotated", default='../../line_data_annotated')
     parser.add_argument("-save_path", default='../../data/')
+    parser.add_argument("-id_save_path", )
+    parser.add_argument("-vocab_file", default='')
 
     parser.add_argument("-shard_size", default=2000, type=int)
     parser.add_argument('-min_src_nsents', default=3, type=int)

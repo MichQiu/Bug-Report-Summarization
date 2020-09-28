@@ -10,7 +10,7 @@ from multiprocessing import Pool
 from copy import deepcopy
 from os.path import join as pjoin
 from others.logging import logger
-from others.tokenization import BertTokenizer
+from tokenization import BertTokenizer
 
 os.environ['STANFORD_PARSER'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
 os.environ['STANFORD_MODELS'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
@@ -154,19 +154,19 @@ test_data = full_data[train_len + valid_len:]
 class BertData():
     def __init__(self, args):
         self.args = args
-        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
+        self.tokenizer = BertTokenizer(args.vocab_file, do_lower_case=False)
 
         self.sep_token = '[SEP]'
         self.cls_token = '[CLS]'
         self.pad_token = '[PAD]'
-        self.tgt_bos = '[unused0]'
-        self.tgt_eos = '[unused1]'
-        self.tgt_sent_split = '[unused2]'
+        self.tgt_bos = '上'
+        self.tgt_eos = '下'
+        self.tgt_sent_split = '中'
         self.sep_vid = self.tokenizer.vocab[self.sep_token] # token ids
         self.cls_vid = self.tokenizer.vocab[self.cls_token]
         self.pad_vid = self.tokenizer.vocab[self.pad_token]
 
-    def preprocess(self, data_dict, tgt_keys, ext_keys, use_bert_basic_tokenizer=False, is_test=False):
+    def preprocess(self, data_dict, tgt_keys, ext_keys, is_test=False):
         """
 
         Args:
@@ -196,19 +196,21 @@ class BertData():
         sent_labels = [] # list for extractive summary sentence labels and order
         ext_text_lst = []
         for key in ext_keys:
+            sent_labels.append([])
             data_dict[key + '_labels'] = deepcopy(sent_id)
             data_dict[key + '_pos'] = deepcopy(data_dict[key])
             for j in range(len(data_dict[key])):
                 data_dict[key][j]['ID'] = data_dict[key][j]['ID'].strip()
 
             # note that the order of sentence labels are not equal to summary, need to adjust later
-            '''
+
             for k in range(len(sent_id)):
                 if data_dict[key + '_labels'][k] in data_dict[key]:
-                    data_dict[key + '_labels'][k] = (data_dict[key + '_labels'][k], 1)
+                    data_dict[key + '_labels'][k] = 1
                 else:
-                    data_dict[key + '_labels'][k] = (data_dict[key + '_labels'][k], 0)
-            '''
+                    data_dict[key + '_labels'][k] = 0
+                sent_labels[-1].append(data_dict[key + '_labels'][k])
+
             for ext_idx, ext_sent in enumerate(data_dict[key]):
                 for idx, sent in enumerate(sent_id):
                     if ext_sent == sent:
@@ -218,7 +220,6 @@ class BertData():
                         data_dict[key + '_pos'][ext_idx] = (data_dict[key + '_pos'][ext_idx], idx)
                     else:
                         data_dict[key + '_labels'][idx] = (data_dict[key + '_labels'][idx], 0, None)
-            sent_labels.append(data_dict[key + '_labels'])
             ext_text_lst.append(data_dict[key + '_pos'])
 
 
@@ -247,9 +248,9 @@ class BertData():
         for key in tgt_keys:
             tgt = data_dict[key]
             tgt_tokens = [tgt[i].split() for i in range(len(tgt))]
-            tgt_subtokens_str = '[unused0] ' + ' [unused2] '.join(
-                [' '.join(self.tokenizer.tokenize(' '.join(tt), use_bert_basic_tokenizer=use_bert_basic_tokenizer)) for tt in
-                 tgt_tokens]) + ' [unused1]'
+            tgt_subtokens_str = '上 ' + ' 中 '.join(
+                [' '.join(self.tokenizer.tokenize(' '.join(tt))) for tt in
+                 tgt_tokens]) + ' 下'
             tgt_subtoken = tgt_subtokens_str.split()[:self.args.max_tgt_ntokens]
             tgt_subtoken_idxs = self.tokenizer.convert_tokens_to_ids(tgt_subtoken)
 
@@ -311,7 +312,7 @@ def _format_to_bert(params):
                 tgt_keys.append(key)
             if key in ext_keys_lst:
                 ext_keys.append(key)
-        bert_data = bert.preprocess(report, tgt_keys, ext_keys, use_bert_basic_tokenizer=args.use_bert_basic_tokenizer)
+        bert_data = bert.preprocess(report, tgt_keys, ext_keys, is_test=is_test)
         src_subtoken_idxs, sent_labels, tgt_subtokens_idxs_lst, segments_ids, cls_ids, src_text, tgt_text_lst, ext_text_lst = bert_data
 
         bert_data_dict = {"src": src_subtoken_idxs, "tgt": tgt_subtokens_idxs_lst,
