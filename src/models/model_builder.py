@@ -114,13 +114,21 @@ def get_generator(vocab_size, dec_hidden_size, device):
     return generator
 
 class Bert(nn.Module):
-    def __init__(self, large, temp_dir, finetune=False):
+    def __init__(self, regular, intent, large, base, bug_config, bug_state_dict, temp_dir, finetune=False):
         super(Bert, self).__init__()
         # load pretrained model
         if(large):
             self.model = BertModel.from_pretrained('bert-large-uncased', cache_dir=temp_dir)
-        else:
-            self.model = BertModel.from_pretrained('/workspace/bert/pretrained/ckpt_8601', cache_dir=temp_dir)
+        elif(base):
+            self.model = BertModel.from_pretrained('bert-base-uncased', cache_dir=temp_dir)
+        elif(regular):
+            config = BertConfig.from_json_file(bug_config)
+            self.model = BertModel(config)
+            self.model.load_state_dict(torch.load(bug_state_dict), strict=False)
+        elif(intent):
+            config = BertConfig.from_json_file(bug_config)
+            self.model = BertModel(config)
+            self.model.load_state_dict(torch.load(bug_state_dict), strict=False)
 
         self.finetune = finetune
 
@@ -139,7 +147,8 @@ class ExtSummarizer(nn.Module):
         super(ExtSummarizer, self).__init__()
         self.args = args
         self.device = device
-        self.bert = Bert(args.large, args.temp_dir, args.finetune_bert)
+        self.bert = Bert(args.regular, args.intent, args.large, args.base, args.bug_config, args.bug_state_dict,
+                         args.temp_dir, args.finetune_bert)
 
         self.ext_layer = ExtTransformerEncoder(self.bert.model.config.hidden_size, args.ext_ff_size, args.ext_heads,
                                                args.ext_dropout, args.ext_layers)
@@ -183,8 +192,8 @@ class AbsSummarizer(nn.Module):
         super(AbsSummarizer, self).__init__()
         self.args = args
         self.device = device
-        self.bert = Bert(args.large, args.temp_dir, args.finetune_bert)
-
+        self.bert = Bert(args.regular, args.intent, args.large, args.base, args.bug_config, args.bug_state_dict,
+                         args.temp_dir, args.finetune_bert)
         if bert_from_extractive is not None: # train after extractive model
             # load extractive layers starting from the 12th layer
             self.bert.model.load_state_dict(
