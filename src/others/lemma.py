@@ -2,7 +2,7 @@ import spacy
 
 nlp = spacy.load("en_core_web_lg")
 
-with open("/home/mich_qiu/PycharmProjects/MSc_Thesis/Bug-Report-Summarization/src/others/h_solution.txt", 'r') as f:
+with open("/home/mich_qiu/PycharmProjects/MSc_Thesis/Bug-Report-Summarization/src/others/h_description.txt", 'r') as f:
     new_sents = []
     for line in f:
         doc = nlp(line)
@@ -43,7 +43,7 @@ with open("/home/mich_qiu/PycharmProjects/MSc_Thesis/Bug-Report-Summarization/sr
         sent2 = ' '.join(pos_noun_idx2)
         new_sents.extend([sent, sent2])
     f.close()
-with open("/home/mich_qiu/PycharmProjects/MSc_Thesis/Bug-Report-Summarization/src/others/h_solution.txt", 'a') as f:
+with open("/home/mich_qiu/PycharmProjects/MSc_Thesis/Bug-Report-Summarization/src/others/h_description.txt", 'a') as f:
     f.write('\n')
     for sent in new_sents:
         f.write(sent)
