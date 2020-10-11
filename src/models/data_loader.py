@@ -22,11 +22,11 @@ class Batch(object):
         if data is not None:
             self.batch_size = len(data)
             # get data for different token types
-            pre_src = [x[0] for x in data]
-            pre_tgt = [x[1] for x in data]
-            pre_segs = [x[2] for x in data]
-            pre_clss = [x[3] for x in data]
-            pre_src_sent_labels = [x[4] for x in data]
+            pre_src = [x[0] for y in data for x in y]
+            pre_tgt = [x[1] for y in data for x in y]
+            pre_segs = [x[2] for y in data for x in y]
+            pre_clss = [x[3] for y in data for x in y]
+            pre_src_sent_labels = [x[4] for y in data for x in y]
 
             # Add padding to source and target data
             src = torch.tensor(self._pad(pre_src, 0))
@@ -203,14 +203,14 @@ class DataIterator(object):
         """ex: Examples"""
         # get examples for different token types
         src = ex['src']
-        tgt = ex['tgt'][:self.args.max_tgt_len][:-1]+[2]
+        tgt = ex['tgt'][:self.args.max_tgt_len][:-1]+[838]
         src_sent_labels = ex['src_sent_labels']
         segs = ex['segs']
         if(not self.args.use_interval):
             segs=[0]*len(segs)
         clss = ex['clss']
-        src_txt = ex['src_txt']
-        tgt_txt = ex['tgt_txt']
+        src_txt = ex['src_text']
+        tgt_txt = ex['tgt_text_lst']
 
         end_id = [src[-1]]
         src = src[:-1][:self.args.max_pos - 1] + end_id
