@@ -2,25 +2,18 @@ import os
 import gc
 import re
 import random
-import pickle
 import xml.etree.ElementTree as ET
 import torch
-from nltk.parse import stanford
-from multiprocessing import Pool
 from copy import deepcopy
 from os.path import join as pjoin
 from others.logging import logger
 from tokenization import BertTokenizer
-
-os.environ['STANFORD_PARSER'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
-os.environ['STANFORD_MODELS'] = '/home/mich_qiu/Standford_parser/stanford-parser-4.0.0/jars'
-
-'''
-data = "/home/mich_qiu/PycharmProjects/MSc_Thesis/data/IBRS-Corpus/bugreports.xml"
-annotated_data = "/home/mich_qiu/PycharmProjects/MSc_Thesis/data/IBRS-Corpus/annotation.xml"
-'''
+from others.utils import split_gold
 
 def load_xml_bug(data, annotated=False): #tested
+    """
+    # Extracting data from XML
+    """
     tree = ET.parse(data)
     root = tree.getroot()
 
@@ -103,11 +96,13 @@ def load_xml_bug(data, annotated=False): #tested
         return datasets
 
 def data_dict_combine(dict1, dict2): #tested
+    # Combining two data dicts
     for i in range(len(dict1)):
         dict1[i].update(dict2[i])
     return dict1
 
 def get_bug_ids(datasets, id_save_path): #tested
+    # Get all the bug ids for all the bug reports in the data
     file = open(id_save_path, 'w+')
     for data_dict in datasets:
         title = data_dict['title']
@@ -115,41 +110,6 @@ def get_bug_ids(datasets, id_save_path): #tested
         bug_id = int(match[0][1:-1])
         file.write(str(bug_id)+'\n')
     file.close()
-
-'''
-special_wordfile = '/home/mich_qiu/PycharmProjects/MSc_Thesis/PreSumm_Bug/src/prepro/special_words.txt'
-He = Heuristics(0, full_data[0])
-sent_idxs_f = He._get_special_sents('&gt;', first=True, last=False)
-eval_dup_dict = He._get_eval_dup_dict('first', sent_idxs_f)
-eval_sent_dict = He.evaluate_sent(special_wordfile)
-
-all_eval_dict = {}
-i = 0
-for report in full_data:
-    He = Heuristics(0, report)
-    eval_sent_dict = He.evaluate_sent(special_wordfile)
-    all_eval_dict['Report ID '+str(i)] = eval_sent_dict
-    i += 1
-
-a = deepcopy(full_data[0])
-a['src_text'][1]
-
-
-bug_data = load_xml_bug(data)
-abs_, ext_ = load_xml_bug(annotated_data, annotated=True)
-sum_data = data_dict_combine(abs_, ext_)
-full_data = data_dict_combine(bug_data, sum_data)
-random.shuffle(full_data)
-
-dataset_len = len(full_data)
-train_len = round(dataset_len * 0.7)
-valid_len = round(dataset_len * 0.15)
-test_len = dataset_len - train_len - valid_len
-
-train_data = full_data[:train_len]
-valid_data = full_data[train_len:train_len + valid_len]
-test_data = full_data[train_len + valid_len:]
-'''
 
 class BertData():
     def __init__(self, args):
@@ -248,14 +208,16 @@ class BertData():
         for key in tgt_keys:
             tgt = data_dict[key]
             tgt_tokens = [tgt[i].split() for i in range(len(tgt))]
+            # add three tokens representing the start of sequence, sequence split and end of sequence tokens.
             tgt_subtokens_str = '上 ' + ' 中 '.join(
                 [' '.join(self.tokenizer.tokenize(' '.join(tt))) for tt in
                  tgt_tokens]) + ' 下'
             tgt_subtoken = tgt_subtokens_str.split()[:self.args.max_tgt_ntokens]
-            tgt_subtoken_idxs = self.tokenizer.convert_tokens_to_ids(tgt_subtoken)
 
             if ((not is_test) and len(tgt_subtoken) < self.args.min_tgt_ntokens):
                 return None
+
+            tgt_subtoken_idxs = self.tokenizer.convert_tokens_to_ids(tgt_subtoken)
 
             tgt_text = '<q>'.join([' '.join(tt) for tt in tgt_tokens])
             tgt_subtokens_idxs_lst.append(tgt_subtoken_idxs)
@@ -265,6 +227,9 @@ class BertData():
 
 
 def format_to_bert(args):
+    """
+    Preprocess data with train-valid-test split
+    """
     bug_data = load_xml_bug(args.raw_path)
     get_bug_ids(bug_data, args.id_save_path)
     abs_, ext_ = load_xml_bug(args.raw_path_annotated, annotated=True)
@@ -291,6 +256,9 @@ def format_to_bert(args):
         i += 1
 
 def _format_to_bert(params):
+    """
+    Preprocess data into BERT format
+    """
     corpus, datasets_type, args, save_file = params
     is_test = datasets_type == 'test'
     if (os.path.exists(save_file)):
@@ -324,35 +292,3 @@ def _format_to_bert(params):
     torch.save(datasets, save_file)
     datasets = []
     gc.collect()
-
-
-'''
-tgt_len = []
-for i in range(len(datasets)):
-    for j in range(len(datasets[i]['tgt'])):
-        tgt_len.append(len(datasets[i]['tgt'][j]))
-
-
-for i in range(len(full_data)):
-    if len(full_data[i]['tgt_text1']) == 0:
-        print(i, 'text1')
-    if len(full_data[i]['tgt_text2']) == 0:
-        print(i, 'text2')
-    if len(full_data[i]['tgt_text3']) == 0:
-        print(i, 'text3')
-
-for i in range(len(full_data)):
-    print(full_data[i].keys())
-
-# data = torch.load('/home/mich_qiu/PycharmProjects/MSc Thesis/data/bert_data_cnndm_final/cnndm.train.0.bert.pt')
-
-for i in range(len(data[2]['src_sent_labels'])):
-    if data[2]['src_sent_labels'][i] == 1:
-        print(i)
-
-data[2]['src_txt'][24]
-data[2]['tgt_txt']
-
-'''
-
-# data = torch.load('/home/mich_qiu/PycharmProjects/MSc_Thesis/data/IBRS-Corpus/preprocessed/base/train_bert.pt')
