@@ -1,6 +1,4 @@
-import os
 import re
-import pickle
 import torch
 import spacy
 import argparse
@@ -15,7 +13,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 nlp = spacy.load("en_core_web_lg")
 
 class Heuristics():
-    def __init__(self, args, bug_comments=None, data_dict=None):
+    def __init__(self, args, bug_comments=None, data_dict=None, lang_embeddings=None):
         """
         :param args: parsed arguments
         :param bug_comments: individual bug comments from pretrain data (bug_comments[bug_id], type: list)
@@ -26,6 +24,7 @@ class Heuristics():
         self.args = args
         self.bug_comments = bug_comments
         self.data_dict = data_dict
+        self.lang_embeddings = lang_embeddings
 
     def evaluate_sent(self, word_file): #tested
         """Get indices for evaluative and duplicate sentences"""
@@ -137,6 +136,26 @@ class Heuristics():
                 tokens = self.bug_comments[idx].split()
                 tagged_tokens = ['[NON]'] + tokens
                 self.bug_comments[idx] = ' '.join(tagged_tokens)
+
+    def identify_intent_pr_seq(self, tokens, intent_tokens_dict):
+        seq = ' '.join(tokens)
+        description_sent_idxs = self._is_statement(seq, self.args.h_description, "description")
+        if description_sent_idxs:
+            return intent_tokens_dict["[DES]"]
+        question_sent_idxs = self._is_question(seq)
+        if question_sent_idxs:
+            return intent_tokens_dict["[QS]"]
+        code_sent_idxs = self._is_code(seq)
+        if code_sent_idxs:
+            return intent_tokens_dict["[CODE]"]
+        solution_sent_idxs = self._is_statement(seq, self.args.h_solution, "solution")
+        if solution_sent_idxs:
+            return intent_tokens_dict["[SOLU]"]
+        info_sent_idxs = self._is_statement(seq, self.args.h_info, "info")
+        if info_sent_idxs:
+            return intent_tokens_dict["[INFO]"]
+        else:
+            return intent_tokens_dict["[NON]"]
 
     def identify_intent_ft(self):
         """Assign intentions to sentences for finetune data"""
@@ -264,9 +283,9 @@ class Heuristics():
         try:
             matcher = PhraseMatcher(nlp.vocab, attr="POS")
             with open(heuristics_file, 'r') as f:
-                heur_list = [nlp(' '.join(line.split())) for line in f]
+                heur_list = [self.lang_embeddings(' '.join(line.split())) for line in f]
                 matcher.add(sent_type, heur_list)
-                docs = nlp.pipe(text, disable=["parser", "ner", "textcat"])
+                docs = self.lang_embeddings.pipe(text, disable=["parser", "ner", "textcat"])
                 matches = matcher.pipe(docs, return_matches=True)
                 match_list = [match for match in matches]
                 for idx, match in enumerate(match_list):
@@ -316,7 +335,7 @@ def apply_heuristics(src_data, args):
 def _apply_heuristics_ft(params):
     args, data = params
     data = [sent for sent in data if len(sent.split()) > 2]
-    heuristics = Heuristics(args, data_dict=data)
+    heuristics = Heuristics(args, data_dict=data, lang_embeddings=nlp)
     heuristics.identify_intent_ft()
     with open(args.save_file, 'a+') as f:
         for sent in heuristics.data_dict:
@@ -327,7 +346,7 @@ def _apply_heuristics_ft(params):
 def _apply_heuristics_pr(params):
     args, data = params
     data = [sent for sent in data if len(sent.split()) > 2]
-    heuristics = Heuristics(args, bug_comments=data)
+    heuristics = Heuristics(args, bug_comments=data, lang_embeddings=nlp)
     heuristics.identify_intent_pr()
     with open(args.save_file, 'a+') as f:
         for sent in heuristics.bug_comments:
@@ -341,6 +360,7 @@ if __name__ == '__main__':
     arg_parser.add_argument("--finetune", default=False, type=bool)
     arg_parser.add_argument("--save_file", default='', type=str)
     arg_parser.add_argument("--n_cpus", default=10, type=int)
+    arg_parser.add_argument("--h_description", default='', type=str)
     arg_parser.add_argument("--h_solution", default='', type=str)
     arg_parser.add_argument("--h_info", default='', type=str)
 
