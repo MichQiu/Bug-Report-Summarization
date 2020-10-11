@@ -20,7 +20,6 @@ from models.data_loader import load_dataset
 from models.model_builder import ExtSummarizer
 from models.trainer_ext import build_trainer
 from others.logging import logger, init_logger
-from transformers.modeling_bert import BertLayerNorm
 
 model_flags = ['hidden_size', 'ff_size', 'heads', 'inter_layers', 'encoder', 'ff_actv', 'use_interval', 'rnn_size']
 
@@ -257,6 +256,7 @@ def train_single_ext(args, device_id):
     model = ExtSummarizer(args, device, checkpoint)
     optim = model_builder.build_optim(args, model, checkpoint) # build optimizer
 
+    # Layer reinitialization
     if args.reinit_pooler:
         model.bert.model.pooler.dense.weight.data.normal_(mean=0.0, std=model.config.initializer_range)
         model.bert.model.pooler.dense.bias.data.zero_()
@@ -270,7 +270,7 @@ def train_single_ext(args, device_id):
                     # Slightly different from the TF version which uses truncated_normal for initialization
                     # cf https://github.com/pytorch/pytorch/pull/5617
                     module.weight.data.normal_(mean=0.0, std=model.config.initializer_range)
-                elif isinstance(module, BertLayerNorm):
+                elif isinstance(module, nn.LayerNorm):
                     module.bias.data.zero_()
                     module.weight.data.fill_(1.0)
                 if isinstance(module, nn.Linear) and module.bias is not None:
