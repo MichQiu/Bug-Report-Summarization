@@ -7,9 +7,10 @@ import torch
 from os import listdir
 from os.path import join as pjoin
 from copy import deepcopy
-from collections import Counter
+from collections import Counter, OrderedDict
 from others import pyrouge
 from others.tokenization import _is_control, _is_whitespace
+from transformers import BertModel, BertConfig
 
 REMAP = {"-lrb-": "(", "-rrb-": ")", "-lcb-": "{", "-rcb-": "}",
          "-lsb-": "[", "-rsb-": "]", "``": '"', "''": '"'}
@@ -157,6 +158,9 @@ def _clean_text(text): #tested
     return "".join(output)
 
 def custom_split(input_string, split_chars): #tested
+    """
+    Split text based on special punctuation rules
+    """
     start_idx = 0
     end_idx = 0
     split_string_list = []
@@ -179,6 +183,9 @@ def custom_split(input_string, split_chars): #tested
     return split_string_list
 
 def _batch_data(data_dir, save_dir, lower_bound, upper_bound):
+    """
+    Batch data into a certain size range while maintaining dict order and keys
+    """
     batch_data = {}
     cache = {}
     current_pos = len(batch_data)
@@ -234,6 +241,9 @@ def _batch_data(data_dir, save_dir, lower_bound, upper_bound):
                 del batch_data[key[-1]]
 
 def getsize(data):
+    """
+    Get size of an object in bytes
+    """
     size = 0
     if isinstance(data, dict):
         for i in list(data.values()):
@@ -249,6 +259,9 @@ def getsize(data):
     return size
 
 def batch_data(data_dir, save_file):
+    """
+    Batch data and resets dict keys
+    """
     files = [file for file in listdir(data_dir)]
     full_data = {}
     current_pos = len(full_data)
@@ -260,6 +273,9 @@ def batch_data(data_dir, save_file):
     torch.save(full_data, save_file)
 
 def split_first_comment(text):
+    """
+    Split the first comment of the bug report
+    """
     if len(text[0].split()) == 0:
         text.pop(0)
         return text
@@ -278,6 +294,9 @@ def split_first_comment(text):
             return text
 
 def write_to_text(data_dir, save_file, shard_size):
+    """
+    Write contents of object to a text file
+    """
     files = [file for file in listdir(data_dir)]
     file_num = 0
     with open(save_file + str(file_num) + '.txt', 'a+') as f:
@@ -294,6 +313,7 @@ def write_to_text(data_dir, save_file, shard_size):
                     f = open(save_file + str(file_num) + '.txt', 'a+')
 
 def shard_text(data_dir, save_file, shard_size):
+    # Shard a text file into multiple smaller files
     file_num = 0
     r = open(data_dir, 'r')
     with open(save_file + str(file_num) + '.txt', 'a+') as f:
@@ -312,7 +332,7 @@ def convert_file_format(data_dir):
     for file in files:
         os.rename(data_dir + file, data_dir + file + '.txt')
 
-def get_distribution(data):
+def get_distribution(data): #Not Used
     distribution_data = []
     for bug in data:
         bug_intent_stat = []
@@ -322,6 +342,48 @@ def get_distribution(data):
             bug_intent_stat.append((intent_counter, len(list(intent_counter.elements()))))
         distribution_data.append(bug_intent_stat)
 
+def convert_state_dict(config_file, state_dict, save_file):
+    # Convert NVIDIA AMP state dicts into regular state dicts
+    config = BertConfig.from_json_file(config_file)
+    model = BertModel(config)
+    amp_checkpoint = torch.load(state_dict)
+    amp_state_dict = amp_checkpoint["model"]
+    dict_length = len(model.state_dict().keys())
+    amp_state_dict_keys = list(amp_state_dict.keys())
 
+    for key in amp_state_dict_keys:
+        if 'intent' in key:
+            amp_state_dict_keys.remove(key)
+    amp_state_dict_keys = amp_state_dict_keys[:dict_length]
 
+    converted_state_dict_keys = deepcopy(amp_state_dict_keys)
+
+    for i in range(len(converted_state_dict_keys)):
+        converted_state_dict_keys[i] = converted_state_dict_keys[i][5:]
+        if 'bias' in converted_state_dict_keys[i]:
+            if '_act' in converted_state_dict_keys[i]:
+                converted_state_dict_keys[i] = converted_state_dict_keys[i][:-9] + converted_state_dict_keys[i][-5:]
+        elif 'weight' in converted_state_dict_keys[i]:
+            if '_act' in converted_state_dict_keys[i]:
+                converted_state_dict_keys[i] = converted_state_dict_keys[i][:-11] + converted_state_dict_keys[i][-7:]
+        else:
+            continue
+
+    state_dict = OrderedDict()
+
+    for idx, key in enumerate(converted_state_dict_keys):
+        state_dict[key] = amp_state_dict[amp_state_dict_keys[idx]]
+
+    torch.save(state_dict, save_file)
+
+def split_gold(data_file, save_file, gold_num):
+    # Split the finetune datasets according to the number of gold summaries they have
+    data = torch.load(data_file)
+    for num in range(len(gold_num)):
+        for i in range(len(data)):
+            data[i]['tgt'] = data[i]['tgt'][gold_num]
+            data[i]['src_sent_labels'] = data[i]['src_sent_labels'][gold_num]
+            data[i]['ext_text_lst'] = data[i]['ext_text_lst'][gold_num]
+            data[i]['tgt_text_lst'] = data[i]['tgt_text_lst'][gold_num]
+        torch.save(data, save_file + 'bug.valid.' + str(num) + '.bert.pt')
 
