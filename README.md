@@ -30,3 +30,22 @@ For regular BERT pretraining, please use `BERT/scripts/run_pretraining.sh`, for 
 
 ## Finetuning for Summarization
 Please follow the instructions at https://github.com/nlpyang/PreSumm for the finetuning procedure.
+
+## Next Steps
+Here are some key areas to work on:
+
+1. Building/Expanding the supervised dataset:
+  - Labelling sentences for extractive summaries on Bug reports
+  - What kind of channels can we use?
+  - Amazon Mechanical Turk?
+  - University students?
+2. Explore/extend current methods of intent labelling
+  - Unsupervised methods: Bayesian Network, CRF, HMM
+  - Snorkel labelling via heuristics
+  - Better heuristics on lingusitics features
+3. Structural Summarisation
+  - Supervised learning on the distribution of sentence intentions (need labelled intent data for each sentence in the extractive summaries)
+  - Heuristics for intent labelling
+  - Multiclass classification on other intent/summarisation datasets
+  - We can include additional classification experiments to see if the model can predict intent labels of sentences
+  
