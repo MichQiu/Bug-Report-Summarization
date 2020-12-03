@@ -293,7 +293,7 @@ def split_first_comment(text):
             text[0] = ' '.join(split_text[0].split())
             return text
 
-def write_to_text(data_dir, save_file, shard_size):
+def write_to_text(data_dir, save_file, shard_size=1000000, bugzilla=False):
     """
     Write contents of object to a text file
     """
@@ -303,14 +303,16 @@ def write_to_text(data_dir, save_file, shard_size):
         for file in files:
             data = torch.load(data_dir + file)
             for bug in list(data.keys()):
-                data[bug] = split_first_comment(data[bug])
+                if bugzilla:
+                    data[bug] = split_first_comment(data[bug])
                 for sent in data[bug]:
                     f.write(sent + '\n')
                 f.write(' \n')
-                if os.stat(save_file + str(file_num) + '.txt').st_size > shard_size:
-                    f.close()
-                    file_num += 1
-                    f = open(save_file + str(file_num) + '.txt', 'a+')
+                if bugzilla:
+                    if os.stat(save_file + str(file_num) + '.txt').st_size > shard_size:
+                        f.close()
+                        file_num += 1
+                        f = open(save_file + str(file_num) + '.txt', 'a+')
 
 def shard_text(data_dir, save_file, shard_size):
     # Shard a text file into multiple smaller files
@@ -326,6 +328,18 @@ def shard_text(data_dir, save_file, shard_size):
                 f.write(line)
             else:
                 f.write(line)
+
+def write_to_full(data_dir, save_file):
+    files = [file for file in listdir(data_dir)]
+    text_list = []
+    full_dict = {}
+    for file in files:
+        bug_dict = torch.load(data_dir + file)
+        for text in bug_dict.values():
+            text_list.append(text)
+    for i, j in enumerate(text_list):
+        full_dict[i] = j
+    torch.save(full_dict, save_file)
 
 def convert_file_format(data_dir):
     files = [file for file in listdir(data_dir)]
@@ -386,4 +400,3 @@ def split_gold(data_file, save_file, gold_num):
             data[i]['ext_text_lst'] = data[i]['ext_text_lst'][gold_num]
             data[i]['tgt_text_lst'] = data[i]['tgt_text_lst'][gold_num]
         torch.save(data, save_file + 'bug.valid.' + str(num) + '.bert.pt')
-
