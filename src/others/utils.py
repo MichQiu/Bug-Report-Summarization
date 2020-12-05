@@ -293,11 +293,25 @@ def split_first_comment(text):
             text[0] = ' '.join(split_text[0].split())
             return text
 
+def merge_dir(data_dir, new_dir):
+    directories = listdir(data_dir)
+    dest_dir = listdir(new_dir)
+    for dir in directories:
+        d = pjoin(data_dir, dir)
+        files = listdir(d)
+        for file in files:
+            if file in dest_dir:
+                dest = new_dir + '/' + dir + '_' + file
+            else:
+                dest = pjoin(new_dir, file)
+            f = pjoin(d, file)
+            shutil.copy(f, dest)
+
 def write_to_text(data_dir, save_file, shard_size=1000000, bugzilla=False):
     """
     Write contents of object to a text file
     """
-    files = [file for file in listdir(data_dir)]
+    files = listdir(data_dir)
     file_num = 0
     with open(save_file + str(file_num) + '.txt', 'a+') as f:
         for file in files:
@@ -308,11 +322,10 @@ def write_to_text(data_dir, save_file, shard_size=1000000, bugzilla=False):
                 for sent in data[bug]:
                     f.write(sent + '\n')
                 f.write(' \n')
-                if bugzilla:
-                    if os.stat(save_file + str(file_num) + '.txt').st_size > shard_size:
-                        f.close()
-                        file_num += 1
-                        f = open(save_file + str(file_num) + '.txt', 'a+')
+                if os.stat(save_file + str(file_num) + '.txt').st_size > shard_size:
+                    f.close()
+                    file_num += 1
+                    f = open(save_file + str(file_num) + '.txt', 'a+')
 
 def shard_text(data_dir, save_file, shard_size):
     # Shard a text file into multiple smaller files
@@ -330,7 +343,7 @@ def shard_text(data_dir, save_file, shard_size):
                 f.write(line)
 
 def write_to_full(data_dir, save_file):
-    files = [file for file in listdir(data_dir)]
+    files = listdir(data_dir)
     text_list = []
     full_dict = {}
     for file in files:
