@@ -6,7 +6,6 @@ from multiprocessing import Pool
 from html.parser import HTMLParser
 from others.logging import logger
 import urllib.request as urllib2
-from pretrain import bugsource, args_info
 import torch
 import requests
 import argparse
@@ -62,7 +61,7 @@ class DataExtract():
         except:
             self.no_finetune_data = True
 
-    def source_data(self):
+    def source_data(self): # tested
         bugreport_len = self.calculate_bugs_len()
         char_list = ["/", "."]
         for product in tqdm(list(bugreport_len.keys())):
@@ -93,7 +92,7 @@ class DataExtract():
         pool.join()
         return product, bug_comments
 
-    def _get_text(self, bug_id):
+    def _get_text(self, bug_id): # tested
         """Get the comments of an individual bug via its bug id"""
         try:
             session = requests.Session()
