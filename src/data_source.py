@@ -61,11 +61,11 @@ class DataExtract():
         except:
             self.no_finetune_data = True
 
-    def source_data(self): # tested
+    def source_data(self, include_extra_info=False): # tested
         bugreport_len = self.calculate_bugs_len()
         char_list = ["/", "."]
         for product in tqdm(list(bugreport_len.keys())):
-            product_name, comments = self._source(product, bugreport_len[product])
+            product_name, comments = self._source(product, bugreport_len[product], include_extra_info=include_extra_info)
             if len(comments) > 0:
                 product_name = ['_' if char in char_list else char for char in product_name]
                 product_name = ''.join(product_name)
@@ -73,7 +73,7 @@ class DataExtract():
                 torch.save(comments, save_file)
             del product_name, comments
 
-    def _source(self, product, bug_ids):  # tested
+    def _source(self, product, bug_ids, include_extra_info=False):  # tested
         """Get the bug ids from the product and extract their comments"""
         bug_comments = {}
         if len(bug_ids) < self.n_cpu:
@@ -82,12 +82,16 @@ class DataExtract():
         else:
             pool = Pool(self.n_cpu)
             divisor = self.n_cpu
-        for d in pool.imap(self._get_text, bug_ids, round((1 + len(bug_ids)) / divisor)):
-            bug_id, src_text = d
-            if bug_id is False and src_text is False:
+        if include_extra_info:
+            source_method = self._get_bug_info
+        else:
+            source_method = self._get_text
+        for d in pool.imap(source_method, bug_ids, round((1 + len(bug_ids)) / divisor)):
+            bug_id, bug_info = d
+            if bug_id is False and bug_info is False:
                 continue
-            elif len(src_text) >= 8:
-                bug_comments[bug_id] = src_text
+            elif len(bug_info) >= 8:
+                bug_comments[bug_id] = bug_info
         pool.close()
         pool.join()
         return product, bug_comments
@@ -115,6 +119,26 @@ class DataExtract():
                     for sent in split_text:
                         src_text.append(sent)
                 return bug_id, src_text
+            else:
+                return False, False
+        except:
+            return False, False
+
+    def _get_bug_info(self, bug_id):
+        try:
+            bug_info = {}
+            session = requests.Session()
+            response = session.get(self.api + '/' + bug_id)
+            _bug = response.json()
+            bug_summary = _bug['bugs'][0]['summary']
+            bug_info['summary'] = bug_summary
+            response = session.get(self.api + '/' + bug_id + '/comment')
+            bug = response.json()
+            author_comments = bug['bugs'][bug_id]['comments']
+            if len(author_comments) > 0:
+                for num, comment in enumerate(author_comments):
+                    bug_info[num + 1] = {comment['author'], comment['creation_time'], comment['text']}
+                return bug_id, bug_info
             else:
                 return False, False
         except:
@@ -197,6 +221,11 @@ def main():
                         type=str,
                         required=False,
                         help="The file path where the dataset for finetuning is stored.")
+    parser.add_argument("--include_extra_info",
+                        default=False,
+                        type=bool,
+                        required=False,
+                        help="Option to choose if data sourcing includes additional information such as author etc.")
 
     args = parser.parse_args()
     if args.no_url:
@@ -208,7 +237,7 @@ def main():
         product_list = get_product_lists(args.platform_url)
     bugzilla = DataExtract(args, product_list)
 
-    bugzilla.source_data()
+    bugzilla.source_data(include_extra_info=args.include_extra_info)
 
 if __name__ == '__main__':
     main()
