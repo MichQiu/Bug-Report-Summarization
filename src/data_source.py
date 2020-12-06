@@ -137,7 +137,7 @@ class DataExtract():
             author_comments = bug['bugs'][bug_id]['comments']
             if len(author_comments) > 0:
                 for num, comment in enumerate(author_comments):
-                    bug_info[num + 1] = {comment['author'], comment['creation_time'], comment['text']}
+                    bug_info[num + 1] = {comment['creator'], comment['creation_time'], comment['text']}
                 return bug_id, bug_info
             else:
                 return False, False
@@ -186,6 +186,16 @@ class DataExtract():
 def main():
     parser = argparse.ArgumentParser()
 
+    def str2bool(v):
+        if isinstance(v, bool):
+            return v
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected.')
+
     parser.add_argument("--platform_url",
                         default=None,
                         type=str,
@@ -223,8 +233,9 @@ def main():
                         help="The file path where the dataset for finetuning is stored.")
     parser.add_argument("--include_extra_info",
                         default=False,
-                        type=bool,
-                        required=False,
+                        type=str2bool,
+                        nargs='?',
+                        const=True,
                         help="Option to choose if data sourcing includes additional information such as author etc.")
 
     args = parser.parse_args()
