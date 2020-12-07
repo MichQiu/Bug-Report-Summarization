@@ -354,6 +354,24 @@ def write_to_full(data_dir, save_file):
         full_dict[i] = j
     torch.save(full_dict, save_file)
 
+def shard_by_report(data, save_dir):
+    full_dict = torch.load(data)
+    for bug_num in full_dict.keys():
+        with open(save_dir + '/' + 'bug_' + str(bug_num) + '.txt', 'w+') as f:
+            bug = full_dict[bug_num]
+            f.write('Bug Report: ' + bug['summary'] + '\n')
+            f.write('\n')
+            comment_nums = list(bug.keys())
+            for i in range(1, len(comment_nums)):
+                creator = bug[i]['creator']
+                creation_time = bug[i]['creation_time']
+                f.write('Author: ' + creator + '\n')
+                f.write('Date posted: ' + creation_time + '\n')
+                for idx, sent in enumerate(bug[i]['text']):
+                    f.write(str(i) + '.' + str(idx+1) + ' ' + sent + '\n')
+                f.write('\n')
+            f.close()
+
 def convert_file_format(data_dir):
     files = [file for file in listdir(data_dir)]
     for file in files:
