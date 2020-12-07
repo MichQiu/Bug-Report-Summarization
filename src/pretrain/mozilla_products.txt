@@ -1,0 +1,93 @@
+Calendar
+Cloud Services
+Data Platform and Tools
+Emerging Markets
+Fenix
+Firefox
+Firefox for Android
+Firefox for Echo Show
+Firefox for FireTV
+Firefox for iOS
+Firefox Private Network
+Focus
+Focus-iOS
+Instantbird
+Lockwise
+Mozilla Localizations
+Mozilla VPN
+Other Applications
+Pocket
+SeaMonkey
+Thunderbird
+Web Compatibility
+bugzilla.mozilla.org
+Conduit
+Developer Infrastructure
+Firefox Build System
+Tree Management
+Chat Core
+Core
+DevTools
+Directory
+External Software Affecting Firefox
+GeckoView
+JSS
+MailNews Core
+NSPR
+NSS
+Remote Protocol
+Testing
+Toolkit
+WebExtensions
+addons.mozilla.org
+Bugzilla
+Socorro
+Tecken
+Testopia
+Webtools
+Air Mozilla
+Community Building
+Data & BI Services Team
+Data Compliance
+Data Science
+Developer Ecosystem
+Developer Engagement
+Developer Services
+developer.mozilla.org
+Enterprise Information Security
+Firefox Friends
+Infrastructure & Operations
+Instantbird Servers
+Internet Public Policy
+L20n
+Localization Infrastructure and Tools
+Location
+Marketing
+Marketing Graveyard
+Mozilla China
+Mozilla Foundation
+Mozilla Foundation Communications
+Mozilla Grants
+Mozilla Messaging
+Mozilla Metrics
+Mozilla QA
+Mozilla Reps
+mozilla.org
+Participation Infrastructure
+Plugin Check
+Product Innovation
+quality.mozilla.org
+Release Engineering
+Shield
+Snippets
+support.mozilla.org
+support.mozilla.org - Lithium
+Taskcluster
+Tracking
+Untriaged Bugs
+User Experience Design
+User Research
+UX Systems
+Web Apps
+Websites
+www.mozilla.org
