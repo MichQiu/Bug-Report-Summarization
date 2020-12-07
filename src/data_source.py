@@ -137,7 +137,10 @@ class DataExtract():
             author_comments = bug['bugs'][bug_id]['comments']
             if len(author_comments) > 0:
                 for num, comment in enumerate(author_comments):
-                    bug_info[num + 1] = {comment['creator'], comment['creation_time'], comment['text']}
+                    sent_list = custom_split(_clean_text(comment['text']), ['.', '?', '!'])
+                    sent_list = [' '.join(sent.split()) for sent in sent_list]
+                    bug_info[num + 1] = {'creator': comment['creator'], 'creation_time': comment['creation_time'],
+                                         'text': sent_list}
                 return bug_id, bug_info
             else:
                 return False, False
@@ -242,7 +245,7 @@ def main():
     args = parser.parse_args()
     if args.no_url:
         product_list = []
-        with open(args.product_file, 'r') as f:
+        with open(args.products_file, 'r') as f:
             for line in f:
                 product_list.append(line[:-1])
     else:
