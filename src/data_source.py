@@ -203,8 +203,9 @@ def main():
                         help="The advanced search url of the bugzilla platform for extracting the product list.")
     parser.add_argument("--no_url",
                         default=False,
-                        type=bool,
-                        required=False,
+                        type=str2bool,
+                        nargs='?',
+                        const=True,
                         help="Statement is true when the url of the bugzilla platform is incompatible with the html parser.")
     parser.add_argument("--products_file",
                         default=None,
