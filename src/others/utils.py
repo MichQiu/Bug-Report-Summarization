@@ -347,7 +347,7 @@ def write_to_full(data_dir, save_file):
     text_list = []
     full_dict = {}
     for file in files:
-        bug_dict = torch.load(data_dir + file)
+        bug_dict = torch.load(data_dir + '/' + file)
         for text in bug_dict.values():
             text_list.append(text)
     for i, j in enumerate(text_list):
@@ -356,8 +356,15 @@ def write_to_full(data_dir, save_file):
 
 def shard_by_report(data, save_dir):
     full_dict = torch.load(data)
+    file_name = []
+    for i in range(len(data) - 8, 0, -1):
+        if data[i] == '/':
+            break
+        else:
+            file_name.insert(0, data[i])
+    file_name = ''.join(file_name)
     for bug_num in full_dict.keys():
-        with open(save_dir + '/' + 'bug_' + str(bug_num) + '.txt', 'w+') as f:
+        with open(save_dir + '/' + file_name + str(bug_num) + '.txt', 'w+') as f:
             bug = full_dict[bug_num]
             f.write('Bug Report: ' + bug['summary'] + '\n')
             f.write('\n')
